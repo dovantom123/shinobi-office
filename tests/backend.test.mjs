@@ -204,7 +204,7 @@ test('/api/test: báo kết quả và lỗi đúng', async () => {
   mockFetch(() => new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'OK' }] })));
   const j = await (await post(ENV)).json();
   assert.equal(j.ok, true);
-  assert.equal(j.model, 'claude-sonnet-5-5');
+  assert.equal(j.model, 'claude-haiku-5-5');
   assert.equal((await (await post({})).json()).code, 'not_configured');
   mockFetch(() => new Response('{}', { status: 401 }));
   assert.equal((await (await post(ENV)).json()).code, 'auth');

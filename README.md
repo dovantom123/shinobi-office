@@ -78,7 +78,7 @@ Mỗi nhân vật gọi backend `POST /api/produce` (Cloudflare Pages Functions 
 | Shikamaru | chủ đề | tóm tắt, khán giả, insight, góc nội dung (chưa tra web, không có nguồn) | claude-haiku-5-5 |
 | Jiraiya | chủ đề + Shikamaru | tiêu đề, caption, bài viết, hashtag, giả định | claude-sonnet-5-5 |
 | Sai | + Jiraiya | brief thiết kế, bố cục, prompt ảnh (chưa tạo ảnh) | **Google** gemini-3.8-flash |
-| Neji | + Sai | kết luận duyệt/sửa/không duyệt, vấn đề, tuyên bố thiếu căn cứ (đánh giá của AI) | claude-sonnet-5-5 |
+| Neji | + Sai | kết luận duyệt/sửa/không duyệt, vấn đề, tuyên bố thiếu căn cứ (đánh giá của AI) | claude-haiku-5-5 |
 | Minato | + Jiraiya, múi giờ | lịch đề xuất (chưa lên lịch/đăng thật) | claude-haiku-5-5 |
 | Ino | + Jiraiya, bình luận do người dùng nhập | bản nháp trả lời (chưa gửi); bỏ qua nếu không có bình luận | claude-haiku-5-5 |
 | Naruto | tất cả kết quả | báo cáo tổng hợp, rủi ro, việc cho con người | claude-sonnet-5-5 |

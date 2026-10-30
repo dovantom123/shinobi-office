@@ -58,7 +58,7 @@ export const CHARACTERS = {
     schema: obj({ concept: str, layouts: { type: 'array', items: obj({ format: str, size: str, description: str }) }, palette: strs, imagePrompts: strs }),
   },
   neji: {
-    role: 'Kiểm duyệt', provider: 'anthropic', model: 'claude-sonnet-5-5', maxTokens: 3000, needs: ['shikamaru', 'jiraiya', 'sai'],
+    role: 'Kiểm duyệt', provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 3000, needs: ['shikamaru', 'jiraiya', 'sai'],
     system: 'Vai trò: Neji, kiểm duyệt. Đánh giá độ phù hợp với chủ đề, tính nhất quán giữa nghiên cứu, bài viết và brief thiết kế, và các tuyên bố thiếu căn cứ. verdict chỉ là "approve", "revise" hoặc "reject". Đây là đánh giá của AI, không phải xác minh sự thật; nêu rõ trong "disclaimer".',
     schema: obj({
       verdict: { type: 'string', enum: ['approve', 'revise', 'reject'] },
