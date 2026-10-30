@@ -75,18 +75,19 @@ Mỗi nhân vật gọi backend `POST /api/produce` (Cloudflare Pages Functions 
 
 | Nhân vật | Đầu vào | Đầu ra | Model mặc định |
 |---|---|---|---|
-| Shikamaru | chủ đề | tóm tắt, khán giả, insight, góc nội dung (chưa tra web, không có nguồn) | claude-haiku-5-5 |
-| Jiraiya | chủ đề + Shikamaru | tiêu đề, caption, bài viết, hashtag, giả định | claude-sonnet-5-5 |
-| Sai | + Jiraiya | brief thiết kế, bố cục, prompt ảnh (chưa tạo ảnh) | **Google** gemini-3.8-flash |
-| Neji | + Sai | kết luận duyệt/sửa/không duyệt, vấn đề, tuyên bố thiếu căn cứ (đánh giá của AI) | claude-haiku-5-5 |
-| Minato | + Jiraiya, múi giờ | lịch đề xuất (chưa lên lịch/đăng thật) | claude-haiku-5-5 |
-| Ino | + Jiraiya, bình luận do người dùng nhập | bản nháp trả lời (chưa gửi); bỏ qua nếu không có bình luận | claude-haiku-5-5 |
-| Naruto | tất cả kết quả | báo cáo tổng hợp, rủi ro, việc cho con người | claude-sonnet-5-5 |
+| Shikamaru | chủ đề | tóm tắt, khán giả, insight, góc nội dung (chưa tra web, không có nguồn) | gpt-5-mini (CheapKeyAI) |
+| Jiraiya | chủ đề + Shikamaru | tiêu đề, caption, bài viết, hashtag, giả định | gpt-5-mini (CheapKeyAI) |
+| Sai | + Jiraiya | brief thiết kế, bố cục, prompt ảnh (chưa tạo ảnh) | gpt-5-mini (CheapKeyAI) |
+| Neji | + Sai | kết luận duyệt/sửa/không duyệt, vấn đề, tuyên bố thiếu căn cứ (đánh giá của AI) | gpt-5-mini (CheapKeyAI) |
+| Minato | + Jiraiya, múi giờ | lịch đề xuất (chưa lên lịch/đăng thật) | gpt-5-mini (CheapKeyAI) |
+| Ino | + Jiraiya, bình luận do người dùng nhập | bản nháp trả lời (chưa gửi); bỏ qua nếu không có bình luận | gpt-5-mini (CheapKeyAI) |
+| Naruto | tất cả kết quả | báo cáo tổng hợp, rủi ro, việc cho con người | gpt-5-mini (CheapKeyAI) |
 
-- **Provider hỗ trợ:** Anthropic (Claude, khóa `ANTHROPIC_API_KEY`), Google (Gemini Interactions API, khóa `GEMINI_API_KEY`, hiện chỉ Sai dùng) và OpenAI (Responses API, khóa `OPENAI_API_KEY`, model `gpt-6.1-sol`, chưa nhân vật nào dùng). Khóa Google phải tạo ở Google AI Studio; gói Google AI Pro không kèm quyền gọi API. Kết nối Google chưa được kiểm chứng với khóa thật. Ngoài ra có provider thử nghiệm `cheapkey` (cổng bên thứ ba tương thích OpenAI, `https://cheapkeyai.shop/v1`, khóa `CHEAPKEY_API_KEY`, model `gpt-5-mini`): chỉ bật khi đặt `PROVIDER_<TÊN>=cheapkey`, ví dụ `PROVIDER_SAI=cheapkey`; bỏ biến đó để quay lại provider mặc định. Dịch vụ này ẩn danh và nội dung đi qua máy chủ của họ, chưa kiểm chứng với dịch vụ thật. Mỗi nhân vật chọn provider/model trong `functions/_lib/config.js`; thiếu khóa của provider nào thì chỉ nhân vật dùng provider đó báo chưa cấu hình. Model Anthropic hợp lệ theo tài liệu chính thức: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-fable-5-1`. Đổi model từng nhân vật bằng biến `MODEL_<TÊN>` (xem `.env.example`), không cần sửa mã.
-- **Cấu hình trên Cloudflare:** Workers & Pages → dự án → Settings → Variables and Secrets (môi trường Production) → thêm secret `ANTHROPIC_API_KEY`, (và `GEMINI_API_KEY` cho Sai), rồi deploy lại (biến mới chỉ áp cho lần deploy sau).
+- **Provider mặc định:** cả 7 nhân vật dùng CheapKeyAI (`cheapkey`, cổng bên thứ ba tương thích OpenAI `https://cheapkeyai.shop/v1`, khóa chung `CHEAPKEY_API_KEY`, model `gpt-5-mini`, endpoint `/responses`). Dịch vụ này ẩn danh, nội dung đi qua máy chủ của họ và chưa kiểm chứng với dịch vụ thật; không nhập dữ liệu nhạy cảm. Tài liệu của họ không nêu có hỗ trợ đầu ra JSON theo schema không: backend gỡ khối code bọc JSON và luôn kiểm tra nghiêm ngặt bằng schema.
+- **Đổi provider/model từng nhân vật không cần sửa mã:** đặt `PROVIDER_<TÊN>` (ví dụ `PROVIDER_SAI=google`) và/hoặc `MODEL_<TÊN>`. Provider hợp lệ: `cheapkey`, `anthropic` (`ANTHROPIC_API_KEY`; haiku/sonnet/opus 5.5, fable 5.1), `google` (`GEMINI_API_KEY`, Interactions API; gemini-3.8-flash, 3.6-flash, 3.5-flash-lite, 4-argon) và `openai` (`OPENAI_API_KEY`, `gpt-6.1-sol`). Model phải thuộc đúng provider. Khóa Google phải tạo ở Google AI Studio; gói Google AI Pro không kèm quyền gọi API. Kết nối Google và Anthropic chưa được kiểm chứng với khóa thật.
+- **Cấu hình trên Cloudflare:** Workers & Pages → dự án → Settings → Variables and Secrets (môi trường Production) → thêm secret `CHEAPKEY_API_KEY`, (secret của provider khác chỉ cần khi bạn đổi nhân vật sang provider đó), rồi deploy lại (biến mới chỉ áp cho lần deploy sau).
 - **Chạy local:** `npm run dev` (Vite) không chạy Functions nên giao diện báo "chưa có backend" và nhiệm vụ dừng ở bước đầu. Thử với AI thật: `npm run build` rồi `npx wrangler pages dev dist`, khóa đặt trong `.dev.vars`.
 - **Không có dữ liệu mẫu thay thế:** thiếu khóa, khóa sai, timeout hoặc API lỗi thì nhiệm vụ dừng tại nhân vật đó và hiện đúng nguyên nhân. Hoạt cảnh chỉ là trình diễn; nhân vật chỉ "hoàn thành" khi có kết quả thật. Tốc độ mô phỏng không làm tăng số lần gọi API.
 - **Chọn nhân vật** để xem nguồn AI, model, trạng thái và bấm **Kiểm tra kết nối** (chỉ gọi khi bạn bấm; tốn một lời gọi rất nhỏ).
 - **Chi phí và bảo vệ:** endpoint công khai nên ai mở trang cũng tiêu được khóa của bạn. Đã có: chỉ nhận cùng nguồn gốc, giới hạn 40 lượt/10 phút/IP và chặn yêu cầu trùng, nhưng các giới hạn này nằm trong bộ nhớ từng worker (chỉ là lớp phụ). Hãy đặt thêm Cloudflare Rate Limiting hoặc Access, và hạn mức chi tiêu ở Anthropic Console.
-- **Kiểm thử:** `npm test` chạy 30 kiểm thử backend bằng mock (không cần khóa, không gọi API thật).
+- **Kiểm thử:** `npm test` chạy 25 kiểm thử backend bằng mock (không cần khóa, không gọi API thật).

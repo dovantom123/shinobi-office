@@ -52,22 +52,22 @@ export const COMMON ='Bạn là một agent trong đội Marketing AI "Shinobi O
 // needs: các nhân vật mà đầu ra của họ là đầu vào bắt buộc (client phải gửi, server kiểm tra lại bằng schema).
 export const CHARACTERS = {
   shikamaru: {
-    role: 'Nghiên cứu', provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 3000, needs: [],
+    role: 'Nghiên cứu', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: [],
     system: 'Vai trò: Shikamaru, nghiên cứu. Phân tích chủ đề, đối tượng khán giả, insight và góc nội dung dựa trên hiểu biết chung của mô hình. Ghi rõ trong "limitations" rằng chưa tra cứu web và các nhận định là giả thuyết cần kiểm chứng.',
     schema: obj({ summary: str, audience: strs, insights: strs, angles: { type: 'array', items: obj({ title: str, description: str }) }, limitations: str }),
   },
   jiraiya: {
-    role: 'Viết bài', provider: 'anthropic', model: 'claude-sonnet-5-5', maxTokens: 4000, needs: ['shikamaru'],
+    role: 'Viết bài', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: ['shikamaru'],
     system: 'Vai trò: Jiraiya, viết bài. Dựa trên chủ đề và kết quả nghiên cứu của Shikamaru, viết tiêu đề, caption/bài đăng tiếng Việt và hashtag. Chỉ dùng thông tin có trong dữ liệu; chỗ nào phải giả định thì liệt kê trong "assumptions". Không tự thêm số liệu, ưu đãi hay sự kiện chưa có căn cứ.',
     schema: obj({ title: str, caption: str, body: str, hashtags: strs, assumptions: strs }),
   },
   sai: {
-    role: 'Thiết kế', provider: 'google', model: 'gemini-3.8-flash', maxTokens: 6000, needs: ['jiraiya'],
+    role: 'Thiết kế', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: ['jiraiya'],
     system: 'Vai trò: Sai, thiết kế. Tạo brief thiết kế, bố cục từng định dạng, bảng màu và prompt tạo ảnh cho bài viết của Jiraiya. Bạn chỉ viết brief và prompt, KHÔNG tạo ảnh.',
     schema: obj({ concept: str, layouts: { type: 'array', items: obj({ format: str, size: str, description: str }) }, palette: strs, imagePrompts: strs }),
   },
   neji: {
-    role: 'Kiểm duyệt', provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 3000, needs: ['shikamaru', 'jiraiya', 'sai'],
+    role: 'Kiểm duyệt', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: ['shikamaru', 'jiraiya', 'sai'],
     system: 'Vai trò: Neji, kiểm duyệt. Đánh giá độ phù hợp với chủ đề, tính nhất quán giữa nghiên cứu, bài viết và brief thiết kế, và các tuyên bố thiếu căn cứ. verdict chỉ là "approve", "revise" hoặc "reject". Đây là đánh giá của AI, không phải xác minh sự thật; nêu rõ trong "disclaimer".',
     schema: obj({
       verdict: { type: 'string', enum: ['approve', 'revise', 'reject'] },
@@ -78,17 +78,17 @@ export const CHARACTERS = {
     }),
   },
   minato: {
-    role: 'Hẹn giờ đăng', provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 2000, needs: ['jiraiya'], usesTimezone: true,
+    role: 'Hẹn giờ đăng', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: ['jiraiya'], usesTimezone: true,
     system: 'Vai trò: Minato, hẹn giờ đăng. Đề xuất lịch đăng theo kênh (Facebook, Instagram, TikTok) cho bài của Jiraiya, theo múi giờ và ngày hiện tại được cung cấp. Đây chỉ là LỊCH ĐỀ XUẤT: bạn không có công cụ lên lịch hay đăng bài. Mỗi mốc ghi ngày giờ dạng "YYYY-MM-DD HH:mm" theo múi giờ đã cho và lý do (là giả định, chưa có dữ liệu tương tác thật).',
     schema: obj({ slots: { type: 'array', items: obj({ channel: str, localTime: str, reason: str }) }, notes: str }),
   },
   ino: {
-    role: 'Trả lời bình luận', provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 3000, needs: ['jiraiya'], needsComments: true,
+    role: 'Trả lời bình luận', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: ['jiraiya'], needsComments: true,
     system: 'Vai trò: Ino, trả lời bình luận. Với từng bình luận do người dùng cung cấp (đánh số từ 1), soạn BẢN NHÁP trả lời phù hợp với bài viết. Bạn không gửi gì ra ngoài. Đặt escalate=true và nêu lý do nếu là khiếu nại, tranh cãi hoặc câu hỏi chưa đủ thông tin.',
     schema: obj({ replies: { type: 'array', items: obj({ commentIndex: { type: 'integer' }, tone: str, draft: str, escalate: { type: 'boolean' }, reason: str }) } }),
   },
   naruto: {
-    role: 'Tổng chỉ huy', provider: 'anthropic', model: 'claude-sonnet-5-5', maxTokens: 3000, needs: ['shikamaru', 'jiraiya', 'sai', 'neji', 'minato'], optionalNeeds: ['ino'],
+    role: 'Tổng chỉ huy', provider: 'cheapkey', model: 'gpt-5-mini', maxTokens: 6000, needs: ['shikamaru', 'jiraiya', 'sai', 'neji', 'minato'], optionalNeeds: ['ino'],
     system: 'Vai trò: Naruto, tổng chỉ huy. Tổng hợp kết quả của cả đội thành báo cáo ngắn cho chủ Fanpage: tóm tắt, quyết định đề xuất, rủi ro (đặc biệt các điểm Neji nêu) và bước tiếp theo cần con người làm. Không tự giao thêm việc cho agent khác.',
     schema: obj({ headline: str, summary: str, decisions: strs, risks: strs, nextSteps: strs }),
   },
