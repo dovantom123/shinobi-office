@@ -322,3 +322,99 @@ test('OpenAI chính thức vẫn được hỗ trợ ở tầng provider (chưa 
   mockFetch(() => new Response('{}', { status: 401 }));
   await assert.rejects(run(), { code: 'auth' });
 });
+
+// ---------- Tạo ảnh (/api/image) ----------
+import { onRequestPost as imageApi } from '../functions/api/image.js';
+const IMG_URL = 'https://cheapkeyai.shop/v1/images/generations';
+const saiOut = { ...OUT.sai, imagePrompts: ['Một chú gà trống chibi phong cách mực tàu', 'prompt thứ hai'] };
+const imgReq = (body, opts) => ({ request: req(body, opts), env: ENV });
+const okImage = (item) => () => json({ created: 1, data: [item] });
+
+test('Ảnh: gọi đúng endpoint cố định, khóa chung, model/size từ cấu hình; trả data URL', async () => {
+  mockFetch(okImage({ b64_json: 'aGVsbG8=' }));
+  const res = await imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 0, model: 'evil', size: '4096x4096', endpoint: 'https://evil.com' }));
+  const j = await res.json();
+  assert.equal(j.ok, true, JSON.stringify(j));
+  assert.equal(j.image.src, 'data:image/png;base64,aGVsbG8=');
+  assert.equal(j.meta.model, 'gpt-image-1');
+  const c = calls[0];
+  assert.equal(c.url, IMG_URL);
+  assert.equal(c.headers.authorization, 'Bearer ck-SECRET');
+  assert.deepEqual(c.body, { model: 'gpt-image-1', prompt: saiOut.imagePrompts[0], size: '1024x1024', n: 1 });
+  assert.ok(!JSON.stringify(j).includes('SECRET'));
+});
+
+test('Ảnh: chọn đúng prompt theo chỉ số; chỉ số hoặc đầu ra Sai không hợp lệ bị từ chối, không gọi API', async () => {
+  mockFetch(okImage({ b64_json: 'aGVsbG8=' }));
+  await imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 1 }));
+  assert.equal(calls[0].body.prompt, 'prompt thứ hai');
+  calls.length = 0;
+  for (const body of [
+    { characterId: 'sai', sai: saiOut, promptIndex: 2 },
+    { characterId: 'sai', sai: saiOut, promptIndex: -1 },
+    { characterId: 'sai', sai: saiOut, promptIndex: '0' },
+    { characterId: 'sai', sai: { concept: 'x' }, promptIndex: 0 },
+    { characterId: 'sai', prompt: 'tự do', promptIndex: 0 },
+  ]) assert.equal((await (await imageApi(imgReq(body))).json()).code, 'bad_image_prompt');
+  assert.equal((await (await imageApi(imgReq({ characterId: 'neji', sai: saiOut, promptIndex: 0 }))).json()).code, 'unknown_character');
+  assert.equal((await imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 0 }, { origin: 'https://evil.com' }))).status, 403);
+  assert.equal(calls.length, 0);
+});
+
+test('Ảnh: thiếu khóa / model sai → báo đúng, không gọi API', async () => {
+  mockFetch(okImage({ b64_json: 'aGVsbG8=' }));
+  const post = (env) => imageApi({ request: req({ characterId: 'sai', sai: saiOut, promptIndex: 0 }), env });
+  assert.equal((await (await post({})).json()).code, 'not_configured');
+  assert.equal((await (await post({ ...ENV, IMAGE_MODEL: 'dall-e-evil' })).json()).code, 'model_not_allowed');
+  assert.equal(calls.length, 0);
+});
+
+test('Ảnh: các lỗi của cổng được phân loại, không lộ khóa; dữ liệu ảnh không hợp lệ bị loại', async () => {
+  const expect = async (handler, code) => {
+    resetGuard();
+    mockFetch(handler);
+    const j = await (await imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 0 }))).json();
+    assert.equal(j.code, code);
+    assert.ok(!JSON.stringify(j).includes('SECRET'));
+  };
+  await expect(() => new Response('{}', { status: 401 }), 'auth');
+  await expect(() => new Response('{}', { status: 429 }), 'provider_rate_limited');
+  await expect(() => new Response('{}', { status: 404 }), 'image_rejected');
+  await expect(() => new Response('{}', { status: 400 }), 'image_rejected');
+  await expect(() => new Response('{}', { status: 503 }), 'upstream');
+  await expect(() => { throw new TypeError('fetch failed'); }, 'network');
+  await expect(okImage({}), 'bad_image');
+  await expect(okImage({ b64_json: '<script>alert(1)</script>' }), 'bad_image');
+  await expect(okImage({ url: 'http://x.com/a.png' }), 'bad_image');
+  await expect(okImage({ url: 'javascript:alert(1)' }), 'bad_image');
+  resetGuard();
+  mockFetch(okImage({ url: 'https://cdn.example.com/a.png' }));
+  assert.equal((await (await imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 0 }))).json()).image.src, 'https://cdn.example.com/a.png');
+});
+
+test('Ảnh: giới hạn lượt riêng (không dùng chung với nhiệm vụ) và chống gửi trùng', async () => {
+  mockFetch(okImage({ b64_json: 'aGVsbG8=' }));
+  const env = { ...ENV, IMAGE_RATE_LIMIT_PER_10MIN: '2' };
+  const post = (i) => imageApi({ request: req({ characterId: 'sai', sai: { ...saiOut, imagePrompts: ['p' + i] }, promptIndex: 0 }), env });
+  assert.equal((await post(1)).status, 200);
+  assert.equal((await post(2)).status, 200);
+  assert.equal((await post(3)).status, 429);
+  mockFetch(byId('shikamaru'));
+  assert.equal((await handleRun(req({ characterId: 'shikamaru', topic: 'abc' }), env)).status, 200); // nhiệm vụ không bị ảnh hưởng
+  resetGuard();
+  let release;
+  globalThis.fetch = () => new Promise((res) => (release = () => res(json({ data: [{ b64_json: 'aGVsbG8=' }] }))));
+  const p1 = imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 0 }));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal((await (await imageApi(imgReq({ characterId: 'sai', sai: saiOut, promptIndex: 0 }))).json()).code, 'duplicate');
+  release();
+  assert.equal((await p1).status, 200);
+});
+
+test('Ảnh: hủy yêu cầu → cancelled', async () => {
+  const ctrl = new AbortController();
+  globalThis.fetch = hang();
+  const p = imageApi({ request: req({ characterId: 'sai', sai: saiOut, promptIndex: 0 }, { signal: ctrl.signal }), env: ENV });
+  setTimeout(() => ctrl.abort(), 10);
+  assert.equal((await (await p)).status, 499);
+});

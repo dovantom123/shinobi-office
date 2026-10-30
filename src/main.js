@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildWorld } from './world.js';
 import { Simulation, STATIONS, BRIDGES } from './agents.js';
-import { fetchStatus, testConnection, formatOutput } from './ai.js';
+import { fetchStatus, testConnection, formatOutput, generateImage } from './ai.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -171,7 +171,10 @@ function init() {
   $('#btn-effects').addEventListener('click', () => setEffects(!effects));
   $('#btn-reset').addEventListener('click', resetView);
   ui.onPick(focusAgent);
-  $('#result').addEventListener('close', () => ui.setRunning(false));
+  $('#result').addEventListener('close', () => {
+    ui.closeResult();
+    ui.setRunning(false);
+  });
 
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof Element && e.target.matches('input, select, textarea')) return;
@@ -295,7 +298,44 @@ function createUI() {
     state.textContent = aiState(a);
   }
 
+  // Nút "Tạo ảnh" cho từng prompt của Sai. Ảnh chỉ được tạo khi bấm; kết quả đến muộn của lượt cũ bị bỏ qua.
+  let imageAbort = null;
+  const SRC_OK = /^(data:image\/png;base64,[A-Za-z0-9+/=]+|https:\/\/\S+)$/;
+  function attachImageTools(saiOutput) {
+    imageAbort?.abort();
+    const host = $('#result-body article[data-agent="sai"] > div');
+    if (!host || !saiOutput.imagePrompts.length) return;
+    const ctrl = (imageAbort = new AbortController());
+    const box = mk('div', null, 'img-tools');
+    saiOutput.imagePrompts.forEach((prompt, i) => {
+      const btn = mk('button', `Tạo ảnh từ prompt ${i + 1}`);
+      btn.type = 'button';
+      const out = mk('div', null, 'img-out');
+      out.setAttribute('role', 'status');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        out.replaceChildren(mk('p', 'Đang tạo ảnh… có thể mất vài chục giây và tốn phí.', 'hint'));
+        const r = await generateImage({ sai: saiOutput, promptIndex: i }, ctrl.signal);
+        if (ctrl.signal.aborted) return;
+        btn.disabled = false;
+        if (!r.ok) return out.replaceChildren(mk('p', `Lỗi: ${r.message}`, 'error'));
+        if (!SRC_OK.test(r.image?.src ?? '')) return out.replaceChildren(mk('p', 'Lỗi: dữ liệu ảnh không hợp lệ.', 'error'));
+        const img = new Image();
+        img.alt = `Ảnh do AI tạo từ prompt ${i + 1}`;
+        img.referrerPolicy = 'no-referrer';
+        img.src = r.image.src;
+        out.replaceChildren(img, mk('small', r.meta?.note ?? 'Ảnh do AI tạo.'));
+      });
+      box.append(mk('p', prompt, 'img-prompt'), btn, out);
+    });
+    host.append(box);
+  }
+
   return {
+    closeResult() {
+      imageAbort?.abort();
+      imageAbort = null;
+    },
     bindAgents(list, w) {
       agents = list;
       world = w;
@@ -401,13 +441,15 @@ function createUI() {
         const body = r.skipped ?? formatOutput(r.agent.id, r.output);
         const tag = r.skipped ? 'bỏ qua' : `AI · ${r.meta.model}`;
         const note = r.meta?.note ? `<span class="note">${esc(r.meta.note)}</span>` : '';
-        return `<article style="--c:${r.agent.color}"><img src="/characters/${r.agent.id}.png" alt="" /><div><h3>${esc(r.agent.name)} · ${esc(r.agent.role)} <small>(${esc(tag)})</small></h3><p>${esc(body)}</p>${note}</div></article>`;
+        return `<article data-agent="${r.agent.id}" style="--c:${r.agent.color}"><img src="/characters/${r.agent.id}.png" alt="" /><div><h3>${esc(r.agent.name)} · ${esc(r.agent.role)} <small>(${esc(tag)})</small></h3><p>${esc(body)}</p>${note}</div></article>`;
       };
       $('#result-body').innerHTML =
         `<p class="topic"><b>Chủ đề:</b> ${esc(topic)}</p>` +
         (error ? `<p class="fail" role="alert"><b>Nhiệm vụ dừng tại ${esc(error.agent.name)}:</b> ${esc(error.message)}</p>` : '') +
         results.map(card).join('');
       $('#result h2').textContent = error ? 'Nhiệm vụ chưa hoàn thành' : 'Nhiệm vụ hoàn thành';
+      const sai = results.find((r) => r.agent.id === 'sai' && r.output);
+      if (sai) attachImageTools(sai.output);
       $('#result').showModal();
     },
   };

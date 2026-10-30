@@ -94,6 +94,9 @@ export const CHARACTERS = {
   },
 };
 
+// Tạo ảnh (chỉ Sai, chỉ khi người dùng bấm): dùng khóa và cổng của provider được chọn. Model hợp lệ lấy theo tài liệu của cổng.
+export const IMAGE = { provider: 'cheapkey', model: 'gpt-image-1', models: ['gpt-image-1'], size: '1024x1024' };
+
 export const ORDER = ['shikamaru', 'jiraiya', 'sai', 'neji', 'minato', 'ino', 'naruto'];
 
 // ---------- Kiểm tra dữ liệu theo schema (tập con JSON Schema ở trên) ----------

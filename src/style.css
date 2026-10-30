@@ -192,6 +192,9 @@ summary { cursor: pointer; font-weight: 700; font-size: 16px; }
 #agent-info dd { margin: 0; overflow-wrap: anywhere; }
 #agent-info .ai-test-result { margin: 6px 0 0; color: var(--muted); }
 #agent-info .ai-test-result.bad { color: var(--danger); }
+#result-body .img-tools { display: grid; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(217, 180, 90, 0.35); }
+#result-body .img-prompt { font-size: 12px; }
+#result-body .img-out img { display: block; width: 100%; height: auto; max-width: 420px; object-fit: contain; border-radius: 6px; margin-top: 6px; background: #0e1424; }
 #result-body .fail { color: var(--danger); margin: 0; }
 #result-body small { color: var(--muted); font-weight: 400; }
 #result-body .note { display: block; margin-top: 4px; font-size: 11px; color: #ffd59a; }

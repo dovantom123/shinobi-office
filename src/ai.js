@@ -1,8 +1,8 @@
 // Gọi backend AI (functions/api/*). Frontend chỉ gửi characterId và dữ liệu nhiệm vụ; không giữ khóa hay chọn model.
 const CLIENT_TIMEOUT = 60000;
 
-async function post(path, body, signal) {
-  const timeout = AbortSignal.timeout(CLIENT_TIMEOUT);
+async function post(path, body, signal, timeoutMs = CLIENT_TIMEOUT) {
+  const timeout = AbortSignal.timeout(timeoutMs);
   try {
     const res = await fetch(path, {
       method: 'POST',
@@ -25,6 +25,8 @@ async function post(path, body, signal) {
 }
 
 export const runCharacter = (payload, signal) => post('/api/produce', payload, signal);
+// Tạo ảnh từ một prompt của Sai (chỉ gọi khi người dùng bấm nút); server tự chọn model, kích thước và khóa.
+export const generateImage = ({ sai, promptIndex }, signal) => post('/api/image', { characterId: 'sai', sai, promptIndex }, signal, 100000);
 export const testConnection = (characterId) => post('/api/test', { characterId });
 
 export async function fetchStatus() {

@@ -19,9 +19,8 @@ export function sameOrigin(request) {
   }
 }
 
-export function rateLimited(request, env) {
-  const limit = Number(env?.RATE_LIMIT_PER_10MIN) || 40;
-  const ip = request.headers.get('cf-connecting-ip') || 'local';
+export function rateLimited(request, env, { bucket = 'run', limit = Number(env?.RATE_LIMIT_PER_10MIN) || 40 } = {}) {
+  const ip = `${bucket}|${request.headers.get('cf-connecting-ip') || 'local'}`;
   const now = Date.now();
   const list = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
   if (list.length >= limit) {
