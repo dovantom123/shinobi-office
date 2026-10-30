@@ -1,6 +1,6 @@
 // Định nghĩa đội agent + bộ mô phỏng luồng nhiệm vụ.
-// LƯU Ý: Nội dung agent "tạo ra" là mẫu soạn sẵn (mô phỏng), chưa gọi AI thật.
-// Muốn nối Claude API sau này: thay hàm `produce` của từng agent bằng lời gọi API.
+// Mỗi agent gọi backend /api/produce (functions/api/produce.js, dùng Claude API).
+// Hàm `produce` của từng agent chỉ là mẫu dự phòng khi backend chưa cấu hình, lỗi hoặc quá hạn.
 import * as THREE from 'three';
 import { createChibi, animateChibi } from './characters.js';
 import { loadCharacterModel, loadCharacterSprite } from './models.js';
@@ -75,6 +75,7 @@ export const STATIONS = [COMMANDER, ...WORKERS].map((a) => ({ id: a.id, ...a.sta
 const WALK_SPEED = 4.2;
 const WORK_TIME = 6;
 const ENVELOPE_SPEED = 13;
+const AI_TIMEOUT = 25000;
 
 class Agent {
   constructor(def, scene, home) {
@@ -391,22 +392,46 @@ export class Simulation {
     w.state = 'working';
     w.status = 'Đang làm việc';
     w.workLeft = WORK_TIME;
+    w.result = null;
+    this.requestOutput(w);
     w.cheer(0.5);
     w.say(w.def.working, WORK_TIME);
     this.world.setActivity(w.def.id, 1);
     this.cb.onLog(`nhận phong thư nhiệm vụ.`, w);
   }
 
+  // Gọi backend /api/produce (Claude API); lỗi hoặc quá hạn thì dùng mẫu soạn sẵn `produce` và đánh dấu live = false.
+  requestOutput(w) {
+    const topic = this.topic;
+    const previous = this.results.map((r) => ({ name: r.agent.name, output: r.output }));
+    const fallback = () => ({ output: w.def.produce(topic), live: false });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT);
+    fetch('/api/produce', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ agent: w.def.id, topic, previous }),
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => (typeof d?.output === 'string' && d.output ? { output: d.output, live: true } : fallback()))
+      .catch(fallback)
+      .then((res) => {
+        clearTimeout(timer);
+        if (this.topic === topic) w.result = res;
+      });
+  }
+
   completeWork(i) {
     const w = this.workers[i];
-    const output = w.def.produce(this.topic);
-    this.results.push({ agent: w.def, output });
+    const { output, live } = w.result;
+    this.results.push({ agent: w.def, output, live });
     w.state = 'done';
     w.status = 'Hoàn thành';
     w.progress = 1;
     w.say(output.split('\n')[0], 4);
     this.world.setActivity(w.def.id, 0);
-    this.cb.onLog(`hoàn thành phần ${w.def.role.toLowerCase()}.`, w);
+    this.cb.onLog(`hoàn thành phần ${w.def.role.toLowerCase()}${live ? ' (AI thật)' : ' (mẫu mô phỏng)'}.`, w);
     this.sendScroll(w, i + 1);
   }
 
@@ -444,8 +469,9 @@ export class Simulation {
     this.workers.forEach((w, i) => {
       if (w.state === 'working') {
         w.workLeft -= dt;
-        w.progress = 1 - Math.max(0, w.workLeft) / WORK_TIME;
-        if (w.workLeft <= 0) this.completeWork(i);
+        // hết thời gian diễn hoạt nhưng AI chưa trả lời: giữ ở 95% và chờ
+        w.progress = w.result ? 1 - Math.max(0, w.workLeft) / WORK_TIME : Math.min(0.95, 1 - Math.max(0, w.workLeft) / WORK_TIME);
+        if (w.workLeft <= 0 && w.result) this.completeWork(i);
       }
       w.update(dt, t, null, 0, this.camera);
     });

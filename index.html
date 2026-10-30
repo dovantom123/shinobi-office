@@ -20,12 +20,12 @@
 
     <header id="title">
       <h1><span class="orn" aria-hidden="true">❖</span> AI Marketing <i aria-hidden="true">•</i> Shinobi Office <span class="orn" aria-hidden="true">❖</span></h1>
-      <p>Văn phòng Marketing AI · Làng Lá <span class="sim">Mô phỏng</span></p>
+      <p>Văn phòng Marketing AI · Làng Lá <span class="sim">Chưa đăng bài thật</span></p>
     </header>
 
     <section id="hud-left" class="panel" aria-label="Giao nhiệm vụ">
       <h2>Bảng nhiệm vụ</h2>
-      <p class="sim-note">Chế độ <b>mô phỏng</b>: nội dung các agent tạo ra là dữ liệu mẫu, chưa gọi AI thật.</p>
+      <p class="sim-note">Agent gọi <b>Claude API</b> qua backend; nếu backend chưa cấu hình hoặc lỗi, phần đó dùng <b>mẫu mô phỏng</b> (có ghi rõ trong nhật ký).</p>
       <form id="mission-form">
         <label for="topic">Chủ đề nhiệm vụ</label>
         <input id="topic" type="text" maxlength="80" placeholder="VD: Ra mắt ramen Ichiraku vị mới" autocomplete="off" />
@@ -57,7 +57,7 @@
 
     <dialog id="result">
       <h2>Nhiệm vụ hoàn thành</h2>
-      <p class="sim-note">Kết quả mô phỏng, dùng để minh họa luồng làm việc.</p>
+      <p class="sim-note">Mỗi phần ghi rõ là AI thật hay mẫu mô phỏng. Đây là đề xuất, chưa có gì được đăng thật.</p>
       <div id="result-body"></div>
       <form method="dialog"><button class="gold">Đóng</button></form>
     </dialog>

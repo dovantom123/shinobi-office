@@ -69,6 +69,11 @@ Sau đó chạy `tools/remove-bg.mjs <thư mục ảnh> <thư mục ra>`, rồi 
 
 Mã agent: `naruto`, `shikamaru`, `jiraiya`, `sai`, `neji`, `minato`, `ino`.
 
-## Nối AI thật (bước sau)
+## AI thật (Claude API)
 
-Mỗi agent trong `src/agents.js` có hàm `produce(topic)` trả về chuỗi mẫu. Để agent làm việc thật, thay hàm này bằng lời gọi tới một backend nhỏ (có giữ API key), backend đó gọi Claude API. Sau đó đổi `completeWork` sang dạng bất đồng bộ (chờ kết quả rồi mới chuyển cuộn giấy). Không đặt API key trong mã frontend.
+Khi nhận phong thư, mỗi agent gọi `POST /api/produce` (`functions/api/produce.js`, Cloudflare Pages Function) kèm kết quả của các agent trước. Hàm này gọi Claude API bằng khóa `ANTHROPIC_API_KEY`, khóa không nằm trong mã frontend.
+
+- **Cấu hình trên Cloudflare:** Workers & Pages → dự án → Settings → Variables and Secrets → thêm secret `ANTHROPIC_API_KEY`, rồi deploy lại.
+- **Chạy local:** `npm run dev` (Vite) không chạy Functions nên `/api/produce` trả 404 và agent dùng mẫu mô phỏng. Muốn thử AI thật ở local: `npx wrangler pages dev dist` sau `npm run build`, khóa đặt trong `.dev.vars` (đã bị `.gitignore`: thêm dòng `.dev.vars` nếu dùng).
+- **Dự phòng:** nếu backend lỗi, chưa có khóa hoặc quá 25 giây, agent dùng hàm `produce(topic)` mẫu trong `src/agents.js`; nhật ký và bảng kết quả ghi rõ "AI thật" hay "mẫu mô phỏng".
+- **Chi phí:** mỗi nhiệm vụ gọi 6 lần (model `claude-haiku-5-5`, tối đa 400 token đầu ra). Endpoint chỉ nhận lời gọi cùng nguồn gốc nhưng chưa giới hạn tần suất; nên đặt giới hạn chi tiêu ở Anthropic Console hoặc rate limit ở Cloudflare.

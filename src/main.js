@@ -325,7 +325,7 @@ function createUI() {
       $('#result-body').innerHTML =
         `<p class="topic"><b>Chủ đề:</b> ${esc(topic)}</p>` +
         results
-          .map((r) => `<article style="--c:${r.agent.color}"><img src="/characters/${r.agent.id}.png" alt="" /><div><h3>${r.agent.name} · ${r.agent.role}</h3><p>${esc(r.output)}</p></div></article>`)
+          .map((r) => `<article style="--c:${r.agent.color}"><img src="/characters/${r.agent.id}.png" alt="" /><div><h3>${r.agent.name} · ${r.agent.role} <small>(${r.live ? 'AI thật' : 'mẫu mô phỏng'})</small></h3><p>${esc(r.output)}</p></div></article>`)
           .join('');
       $('#result').showModal();
     },
