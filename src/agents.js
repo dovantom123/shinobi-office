@@ -1,9 +1,9 @@
 // Định nghĩa đội agent + bộ mô phỏng luồng nhiệm vụ.
-// Mỗi agent gọi backend /api/produce (functions/api/produce.js, dùng Claude API).
-// Hàm `produce` của từng agent chỉ là mẫu dự phòng khi backend chưa cấu hình, lỗi hoặc quá hạn.
+// Mỗi agent gọi backend AI qua src/ai.js (functions/api/produce.js); không còn dữ liệu mẫu thay thế khi lỗi.
 import * as THREE from 'three';
 import { createChibi, animateChibi } from './characters.js';
 import { loadCharacterModel, loadCharacterSprite } from './models.js';
+import { runCharacter, headline } from './ai.js';
 
 const SKIN = 0xffd7b5;
 
@@ -23,44 +23,36 @@ export const WORKERS = [
     station: { type: 'library', place: 'Thư viện', pos: new THREE.Vector3(0, 0, 8), r: 8.5, waterfall: 0.8 },
     working: 'Phiền phức thật… để tôi phân tích đã.',
     spec: { skin: 0xf2c9a0, hair: 0x1d1d22, hairStyle: 'pineapple', top: 0x2a2f45, pants: 0x2a2f45, vest: 0x56733d, armband: 0x2a2f45, fishnet: ['wrists'], eyes: 0x2a2a2a, prop: 'none', seed: 5, eyeStyle: 'sleepy', mouth: 'flat', earrings: true, pouch: true, browTilt: 0.2, pose: 'think', shoes: 0x2a3a2a },
-    produce: (topic) =>
-      `• Khán giả chính: ninja trẻ 18–30 tuổi quan tâm "${topic}"\n• 3 góc nội dung: lợi ích nổi bật, câu chuyện hậu trường, ưu đãi giới hạn\n• Khung giờ tương tác cao: 11h30 và 20h00`,
   },
   {
     id: 'jiraiya', name: 'Jiraiya', role: 'Viết bài', color: '#d94b3a',
     station: { type: 'inn', place: 'Quán trọ', pos: new THREE.Vector3(-27, 6, -13), r: 7.5, waterfall: -0.9 },
     working: 'Cảm hứng của Tiên nhân đang dâng trào!',
     spec: { skin: 0xf5cba7, hair: 0xf4f4f4, hairStyle: 'longWhite', top: 0x6b7a4a, pants: 0x6b7a4a, haori: 0xb3261e, headband: { cloth: 0x3a3a3a, horns: true, text: '油' }, eyes: 0x3a2a1a, prop: 'none', backScroll: { body: 0x3f6b3a, ends: 0x8a2a1e }, seed: 9, scale: 1.25, mouth: 'grin', tearMarks: true, geta: true, fishnet: ['wrists'], brow: 0xdddddd, pose: 'crossed' },
-    produce: (topic) =>
-      `Tiêu đề: "${topic} — chuyện mà cả Làng Lá đang bàn tán!"\nMở bài kể chuyện, 3 đoạn thân bài theo 3 góc nội dung, kết bằng lời kêu gọi hành động. (~350 chữ)`,
   },
   {
     id: 'sai', name: 'Sai', role: 'Thiết kế', color: '#4a8fe0',
     station: { type: 'studio', place: 'Xưởng vẽ', pos: new THREE.Vector3(-17, -6, 25), r: 7.5, waterfall: -0.7 },
     working: 'Siêu Thú Giả Họa… vẽ xong ngay.',
     spec: { skin: 0xfbeee4, hair: 0x111111, hairStyle: 'short', top: 0x1a1c22, pants: 0x22263a, strap: 0xa8322a, gloves: 0x1a1a1a, headband: { cloth: 0x1a1a1a }, eyes: 0x111111, prop: 'brush', backScroll: { body: 0xf2efe6, ends: 0x2b2b2b, stripes: 0xa8322a, r: 0.2, len: 1.1 }, seed: 13, eyeStyle: 'normal', mouth: 'flat', midriff: true, pouch: true, shinWraps: true, pose: 'brush' },
-    produce: () => `Bộ 3 ảnh: 1 ảnh bìa 1200×630, 1 ảnh vuông 1080×1080, 1 story 1080×1920.\nPhong cách mực tàu đen trắng, điểm nhấn cam.`,
   },
   {
     id: 'neji', name: 'Neji', role: 'Kiểm duyệt', color: '#a99bff',
     station: { type: 'dojo', place: 'Võ đường Hyuga', pos: new THREE.Vector3(27, 0, 7), r: 8, waterfall: 0.7 },
     working: 'Byakugan! Không lỗi nào thoát được.',
     spec: { skin: SKIN, hair: 0x3b2a1f, hairStyle: 'longStraight', top: 0xeee8da, pants: 0x2e2a2a, robe: true, headband: { cloth: 0x2a2f45 }, eyes: 0xdcd6f7, prop: 'none', seed: 17, eyeStyle: 'byakugan', mouth: 'flat', belt: 0x3a3030, shinWraps: true, browTilt: 0.25, pose: 'palm' },
-    produce: () => `Đã soát: chính tả ✔, giọng thương hiệu ✔, bản quyền hình ✔.\nSửa 2 lỗi nhỏ, rút gọn tiêu đề còn 60 ký tự. Duyệt đăng.`,
   },
   {
     id: 'minato', name: 'Minato', role: 'Hẹn giờ đăng', color: '#ffd84a',
     station: { type: 'clock', place: 'Tháp đồng hồ', pos: new THREE.Vector3(-27, 1, 7), r: 7.5, waterfall: -0.6 },
     working: 'Phi Lôi Thần — đúng giờ, không lệch một giây.',
     spec: { skin: SKIN, hair: 0xffd84a, hairStyle: 'spiky', longSideBangs: true, top: 0x23324d, pants: 0x23324d, vest: 0x56733d, cloak: 0xf6f3ec, cloakTrim: 0xe2422d, cloakSleeves: true, headband: { cloth: 0x23324d }, eyes: 0x3b7bd6, prop: 'kunai', seed: 11, mouth: 'smile', pouch: true, shinWraps: true, pose: 'kunai' },
-    produce: () => `Lịch đăng: Facebook 11:30, Instagram 20:00, TikTok 20:15 (hôm nay).\nĐã đặt nhắc lại sau 24h cho bài tổng hợp.`,
   },
   {
     id: 'ino', name: 'Ino', role: 'Trả lời bình luận', color: '#b56cff',
     station: { type: 'flower', place: 'Tiệm hoa Yamanaka', pos: new THREE.Vector3(27, 6, -13), r: 7.5, waterfall: 0.9 },
     working: 'Tâm Chuyển Thân — hiểu ngay khách muốn gì!',
     spec: { skin: SKIN, hair: 0xf6e7a1, hairStyle: 'ponytail', top: 0x7a45b5, pants: 0x7a45b5, skirt: 0x6a3aa5, midriff: true, eyes: 0x5aa3e0, prop: 'flower', seed: 19, mouth: 'smile', earrings: true, sleeveless: true, armWraps: 0x2a2433, fishnet: ['elbows', 'knees'], fishnetShins: true, shoes: 0x2a2433, pose: 'hip' },
-    produce: () => `Soạn sẵn 5 mẫu trả lời: cảm ơn, hỏi giá, hỏi địa chỉ, góp ý, khiếu nại.\nGắn cờ bình luận tiêu cực để Tổng chỉ huy xem.`,
   },
 ];
 
@@ -75,7 +67,6 @@ export const STATIONS = [COMMANDER, ...WORKERS].map((a) => ({ id: a.id, ...a.sta
 const WALK_SPEED = 4.2;
 const WORK_TIME = 6;
 const ENVELOPE_SPEED = 13;
-const AI_TIMEOUT = 25000;
 
 class Agent {
   constructor(def, scene, home) {
@@ -322,6 +313,11 @@ class Envelope {
     this.done = false;
   }
 
+  dispose() {
+    this.done = true;
+    this.scene.remove(this.mesh);
+  }
+
   update(dt, t, cam) {
     this.s += dt * ENVELOPE_SPEED;
     const k = Math.min(1, this.s / this.length);
@@ -339,8 +335,10 @@ class Envelope {
 }
 
 /**
- * Điều phối nhiệm vụ: Naruto gửi phong thư → 6 agent lần lượt làm → báo cáo về Naruto.
- * Callbacks: onLog(text, agent), onComplete({ topic, results }), onStatus(text)
+ * Điều phối nhiệm vụ: Naruto gửi phong thư → 6 agent lần lượt làm → Naruto tổng hợp.
+ * Mỗi bước hoàn thành chỉ khi backend AI trả kết quả hợp lệ (animation chỉ là phần trình diễn).
+ * Lỗi ở bất kỳ bước nào dừng cả nhiệm vụ và báo rõ nguyên nhân; không có dữ liệu mẫu thay thế.
+ * Callbacks: onLog(text, agent), onComplete({ topic, results, error? }), onStatus(text), onCancel()
  */
 export class Simulation {
   constructor(scene, world, callbacks) {
@@ -354,17 +352,30 @@ export class Simulation {
     this.scrolls = [];
     this.running = false;
     this.results = [];
+    this.outputs = {}; // đầu ra có cấu trúc theo characterId, chuyển tiếp cho nhân vật sau
     this.topic = '';
+    this.comments = [];
+    this.runId = 0; // kết quả của lượt cũ đến muộn bị bỏ qua
+    this.abort = null;
+    this.final = null;
   }
 
-  start(topic) {
+  start(topic, comments = []) {
     if (this.running) return false;
     this.running = true;
+    this.runId++;
+    this.abort = new AbortController();
     this.returnTimer = 0;
     this.topic = topic;
+    this.comments = comments;
     this.results = [];
+    this.outputs = {};
+    this.final = null;
+    for (const a of this.all) {
+      a.state = 'idle';
+      a.result = null;
+    }
     for (const w of this.workers) {
-      w.state = 'idle';
       w.status = 'Chờ đến lượt';
       w.progress = 0;
     }
@@ -381,69 +392,138 @@ export class Simulation {
     const to = index < this.workers.length ? this.workers[index] : this.commander;
     this.scrolls.push(
       new Envelope(this.scene, this.world.route(fromAgent.def.id, to.def.id), () => {
+        if (!this.running) return;
         if (index < this.workers.length) this.assign(index);
-        else this.finish();
+        else this.beginSummary();
       }),
     );
   }
 
+  // gửi yêu cầu AI cho một nhân vật; kết quả của lượt đã bị hủy/thay thế thì bỏ qua
+  request(agent) {
+    const run = this.runId;
+    agent.result = null;
+    runCharacter(
+      { characterId: agent.def.id, topic: this.topic, inputs: this.outputs, comments: this.comments },
+      this.abort.signal,
+    ).then((res) => {
+      if (run !== this.runId || !this.running) return;
+      if (!res.ok) return this.fail(agent, res);
+      agent.result = res;
+    });
+  }
+
   assign(i) {
     const w = this.workers[i];
+    this.cb.onLog(`nhận phong thư nhiệm vụ.`, w);
+    // Ino cần bình luận do người dùng cung cấp; không có thì bỏ qua, không bịa bình luận
+    if (w.def.id === 'ino' && !this.comments.length) {
+      w.state = 'done';
+      w.status = 'Bỏ qua';
+      w.progress = 1;
+      this.results.push({ agent: w.def, skipped: 'Chưa có bình luận do người dùng cung cấp, không có gì để soạn.' });
+      this.cb.onLog('bỏ qua: chưa có bình luận để trả lời.', w);
+      this.sendScroll(w, i + 1);
+      return;
+    }
     w.state = 'working';
-    w.status = 'Đang làm việc';
+    w.status = 'Đang xử lý';
     w.workLeft = WORK_TIME;
-    w.result = null;
-    this.requestOutput(w);
     w.cheer(0.5);
     w.say(w.def.working, WORK_TIME);
     this.world.setActivity(w.def.id, 1);
-    this.cb.onLog(`nhận phong thư nhiệm vụ.`, w);
-  }
-
-  // Gọi backend /api/produce (Claude API); lỗi hoặc quá hạn thì dùng mẫu soạn sẵn `produce` và đánh dấu live = false.
-  requestOutput(w) {
-    const topic = this.topic;
-    const previous = this.results.map((r) => ({ name: r.agent.name, output: r.output }));
-    const fallback = () => ({ output: w.def.produce(topic), live: false });
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT);
-    fetch('/api/produce', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ agent: w.def.id, topic, previous }),
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => (typeof d?.output === 'string' && d.output ? { output: d.output, live: true } : fallback()))
-      .catch(fallback)
-      .then((res) => {
-        clearTimeout(timer);
-        if (this.topic === topic) w.result = res;
-      });
+    this.request(w);
   }
 
   completeWork(i) {
     const w = this.workers[i];
-    const { output, live } = w.result;
-    this.results.push({ agent: w.def, output, live });
+    const { output, meta } = w.result;
+    this.outputs[w.def.id] = output;
+    this.results.push({ agent: w.def, output, meta });
     w.state = 'done';
     w.status = 'Hoàn thành';
     w.progress = 1;
-    w.say(output.split('\n')[0], 4);
+    w.say(headline(w.def.id, output), 4);
     this.world.setActivity(w.def.id, 0);
-    this.cb.onLog(`hoàn thành phần ${w.def.role.toLowerCase()}${live ? ' (AI thật)' : ' (mẫu mô phỏng)'}.`, w);
+    this.cb.onLog(`hoàn thành phần ${w.def.role.toLowerCase()} (${meta.model}).`, w);
     this.sendScroll(w, i + 1);
   }
 
+  // Phong thư về tới Naruto: tổng hợp bằng một lời gọi AI cuối cùng (không lặp)
+  beginSummary() {
+    const c = this.commander;
+    c.state = 'working';
+    c.status = 'Đang tổng hợp';
+    c.workLeft = 2;
+    c.say('Để tôi tổng hợp báo cáo của cả đội…', 6);
+    this.world.setActivity(c.def.id, 1);
+    this.cb.onLog('nhận phong thư, đang tổng hợp báo cáo.', c);
+    this.request(c);
+  }
+
   finish() {
+    const c = this.commander;
+    const { output, meta } = c.result;
+    this.results.push({ agent: c.def, output, meta });
     this.running = false;
-    this.commander.status = 'Nhiệm vụ hoàn thành';
-    this.commander.say('Tuyệt vời! Đúng là con đường nhẫn đạo của chúng ta! 🍥', 5);
+    c.state = 'idle';
+    c.status = 'Nhiệm vụ hoàn thành';
+    c.progress = 1;
+    c.say(headline('naruto', output), 5);
+    this.world.setActivity(c.def.id, 0);
     for (const a of this.all) a.cheer(3);
-    this.cb.onLog('nhận báo cáo — nhiệm vụ hoàn thành!', this.commander);
+    this.cb.onLog(`tổng hợp xong (${meta.model}) — nhiệm vụ hoàn thành.`, c);
     this.cb.onStatus('Hoàn thành');
     this.returnTimer = 3.2; // sau khi ăn mừng, trở lại trạng thái chờ
     this.cb.onComplete({ topic: this.topic, results: this.results });
+  }
+
+  clearScrolls() {
+    for (const s of this.scrolls) s.dispose();
+    this.scrolls = [];
+  }
+
+  // Lỗi ở một bước: dừng cả nhiệm vụ, báo nguyên nhân thật
+  fail(agent, res) {
+    if (!this.running) return;
+    this.running = false;
+    this.abort.abort();
+    this.clearScrolls();
+    for (const a of this.all) {
+      if (a.state === 'working') a.state = 'idle';
+      if (a !== agent && a.status !== 'Hoàn thành' && a !== this.commander) a.status = 'Đã dừng';
+      this.world.setActivity(a.def.id, 0);
+    }
+    agent.state = 'error';
+    agent.status = 'Lỗi';
+    agent.progress = 0;
+    agent.say(`Có lỗi: ${res.message}`, 6);
+    this.commander.status = 'Nhiệm vụ thất bại';
+    this.cb.onLog(`gặp lỗi (${res.code}): ${res.message}`, agent);
+    this.cb.onStatus('Thất bại');
+    this.returnTimer = 4;
+    this.cb.onComplete({ topic: this.topic, results: this.results, error: { agent: agent.def, code: res.code, message: res.message } });
+  }
+
+  cancel() {
+    if (!this.running) return false;
+    this.running = false;
+    this.runId++; // mọi phản hồi đang bay của lượt này sẽ bị bỏ qua
+    this.abort.abort();
+    this.clearScrolls();
+    for (const a of this.all) {
+      a.state = 'idle';
+      a.progress = 0;
+      this.world.setActivity(a.def.id, 0);
+    }
+    for (const w of this.workers) w.status = 'Đã hủy';
+    this.commander.status = 'Đã hủy';
+    this.commander.say('Nhiệm vụ đã bị hủy.', 3);
+    this.cb.onLog('nhiệm vụ đã bị hủy.', this.commander);
+    this.cb.onStatus('Đã hủy');
+    this.returnTimer = 2;
+    this.cb.onCancel?.();
+    return true;
   }
 
   setNight(k) {
@@ -459,6 +539,7 @@ export class Simulation {
           w.status = 'Đang chờ';
           w.progress = 0;
         }
+        this.commander.state = 'idle';
         this.commander.status = 'Đang chờ lệnh';
         this.cb.onStatus('Đang chờ lệnh');
       }
@@ -469,12 +550,18 @@ export class Simulation {
     this.workers.forEach((w, i) => {
       if (w.state === 'working') {
         w.workLeft -= dt;
-        // hết thời gian diễn hoạt nhưng AI chưa trả lời: giữ ở 95% và chờ
-        w.progress = w.result ? 1 - Math.max(0, w.workLeft) / WORK_TIME : Math.min(0.95, 1 - Math.max(0, w.workLeft) / WORK_TIME);
+        // thanh tiến độ không chạm 100% khi chưa có kết quả thật
+        w.progress = Math.min(1 - Math.max(0, w.workLeft) / WORK_TIME, w.result ? 1 : 0.95);
         if (w.workLeft <= 0 && w.result) this.completeWork(i);
       }
       w.update(dt, t, null, 0, this.camera);
     });
-    this.commander.update(dt, t, null, 0, this.camera);
+    const c = this.commander;
+    if (c.state === 'working') {
+      c.workLeft -= dt;
+      c.progress = c.result ? 1 : 0.5;
+      if (c.workLeft <= 0 && c.result) this.finish();
+    }
+    c.update(dt, t, null, 0, this.camera);
   }
 }

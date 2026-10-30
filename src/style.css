@@ -180,6 +180,21 @@ summary { cursor: pointer; font-weight: 700; font-size: 16px; }
 .r-status { font-size: 11px; grid-row: span 2; color: var(--muted); text-align: right; }
 .r-status.working, .chip.working { color: var(--busy); }
 .r-status.done, .chip.done { color: var(--ok); }
+.r-status.error, .chip.error { color: var(--danger); }
+#extra { margin: 8px 0 0; font-size: 12px; }
+#extra summary { cursor: pointer; color: var(--muted); }
+#comments { width: 100%; margin-top: 4px; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(217, 180, 90, 0.5); background: rgba(0, 0, 0, 0.35); color: var(--text); font: inherit; resize: vertical; }
+#btn-cancel { width: 100%; margin-top: 6px; }
+#agent-info { margin: 10px 0 0; padding: 8px 10px; border: 1px solid rgba(217, 180, 90, 0.35); border-radius: 6px; font-size: 12px; }
+#agent-info h3 { margin: 0 0 6px; font-size: 14px; color: var(--gold-hi); font-family: var(--serif-vi); }
+#agent-info dl { margin: 0 0 8px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
+#agent-info dt { color: var(--muted); }
+#agent-info dd { margin: 0; overflow-wrap: anywhere; }
+#agent-info .ai-test-result { margin: 6px 0 0; color: var(--muted); }
+#agent-info .ai-test-result.bad { color: var(--danger); }
+#result-body .fail { color: var(--danger); margin: 0; }
+#result-body small { color: var(--muted); font-weight: 400; }
+#result-body .note { display: block; margin-top: 4px; font-size: 11px; color: #ffd59a; }
 .bar { grid-column: 1 / -1; height: 3px; margin-top: 4px; background: rgba(255, 255, 255, 0.08); border-radius: 2px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--c); transition: width 0.2s linear; }
 

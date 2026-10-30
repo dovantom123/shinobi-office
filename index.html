@@ -25,12 +25,18 @@
 
     <section id="hud-left" class="panel" aria-label="Giao nhiệm vụ">
       <h2>Bảng nhiệm vụ</h2>
-      <p class="sim-note">Agent gọi <b>Claude API</b> qua backend; nếu backend chưa cấu hình hoặc lỗi, phần đó dùng <b>mẫu mô phỏng</b> (có ghi rõ trong nhật ký).</p>
+      <p class="sim-note">Mỗi nhân vật gọi <b>AI thật</b> qua backend. Thiếu khóa hoặc API lỗi thì nhiệm vụ dừng và báo rõ lỗi, không có dữ liệu mẫu thay thế. Hoạt cảnh chỉ để trình diễn.</p>
       <form id="mission-form">
         <label for="topic">Chủ đề nhiệm vụ</label>
         <input id="topic" type="text" maxlength="80" placeholder="VD: Ra mắt ramen Ichiraku vị mới" autocomplete="off" />
+        <details id="extra">
+          <summary>Bình luận cho Ino (tùy chọn)</summary>
+          <label for="comments">Mỗi dòng một bình luận, tối đa 5. Không có thì Ino bỏ qua bước này.</label>
+          <textarea id="comments" rows="3" maxlength="1600" placeholder="VD: Giá bao nhiêu vậy shop?"></textarea>
+        </details>
         <p id="form-error" class="error" role="alert" hidden></p>
         <button id="btn-start" class="gold" type="submit">Gửi phong thư nhiệm vụ</button>
+        <button id="btn-cancel" type="button" hidden>Hủy nhiệm vụ</button>
       </form>
       <div class="row">
         <label for="speed">Tốc độ</label>
@@ -47,6 +53,7 @@
 
     <details id="hud-right" class="panel" open>
       <summary>Đội Shinobi <span id="mission-status">Đang chờ lệnh</span></summary>
+      <section id="agent-info" aria-live="polite"><p class="hint">Chọn một nhân vật để xem nguồn AI, model và trạng thái.</p></section>
       <ul id="roster"></ul>
     </details>
 
@@ -57,7 +64,7 @@
 
     <dialog id="result">
       <h2>Nhiệm vụ hoàn thành</h2>
-      <p class="sim-note">Mỗi phần ghi rõ là AI thật hay mẫu mô phỏng. Đây là đề xuất, chưa có gì được đăng thật.</p>
+      <p class="sim-note">Nội dung do AI tạo, chưa được xác minh sự thật. Chưa có gì được đăng, lên lịch hay gửi đi.</p>
       <div id="result-body"></div>
       <form method="dialog"><button class="gold">Đóng</button></form>
     </dialog>

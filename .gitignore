@@ -17,3 +17,5 @@ desktop.ini
 .DS_Store
 
 .dev.vars
+!.env.example
+.wrangler/

@@ -69,11 +69,24 @@ Sau đó chạy `tools/remove-bg.mjs <thư mục ảnh> <thư mục ra>`, rồi 
 
 Mã agent: `naruto`, `shikamaru`, `jiraiya`, `sai`, `neji`, `minato`, `ino`.
 
-## AI thật (Claude API)
+## AI thật (từng nhân vật)
 
-Khi nhận phong thư, mỗi agent gọi `POST /api/produce` (`functions/api/produce.js`, Cloudflare Pages Function) kèm kết quả của các agent trước. Hàm này gọi Claude API bằng khóa `ANTHROPIC_API_KEY`, khóa không nằm trong mã frontend.
+Mỗi nhân vật gọi backend `POST /api/produce` (Cloudflare Pages Functions trong `functions/`). Frontend chỉ gửi `characterId`, chủ đề và đầu ra của nhân vật trước; **provider, model, khóa, chỉ dẫn vai trò và schema đầu ra nằm hết ở server** (`functions/_lib/config.js`). Đầu ra được kiểm tra theo schema trước khi hiển thị.
 
-- **Cấu hình trên Cloudflare:** Workers & Pages → dự án → Settings → Variables and Secrets → thêm secret `ANTHROPIC_API_KEY`, rồi deploy lại.
-- **Chạy local:** `npm run dev` (Vite) không chạy Functions nên `/api/produce` trả 404 và agent dùng mẫu mô phỏng. Muốn thử AI thật ở local: `npx wrangler pages dev dist` sau `npm run build`, khóa đặt trong `.dev.vars` (đã bị `.gitignore`: thêm dòng `.dev.vars` nếu dùng).
-- **Dự phòng:** nếu backend lỗi, chưa có khóa hoặc quá 25 giây, agent dùng hàm `produce(topic)` mẫu trong `src/agents.js`; nhật ký và bảng kết quả ghi rõ "AI thật" hay "mẫu mô phỏng".
-- **Chi phí:** mỗi nhiệm vụ gọi 6 lần (model `claude-haiku-5-5`, tối đa 400 token đầu ra). Endpoint chỉ nhận lời gọi cùng nguồn gốc nhưng chưa giới hạn tần suất; nên đặt giới hạn chi tiêu ở Anthropic Console hoặc rate limit ở Cloudflare.
+| Nhân vật | Đầu vào | Đầu ra | Model mặc định |
+|---|---|---|---|
+| Shikamaru | chủ đề | tóm tắt, khán giả, insight, góc nội dung (chưa tra web, không có nguồn) | claude-haiku-5-5 |
+| Jiraiya | chủ đề + Shikamaru | tiêu đề, caption, bài viết, hashtag, giả định | claude-sonnet-5-5 |
+| Sai | + Jiraiya | brief thiết kế, bố cục, prompt ảnh (chưa tạo ảnh) | claude-haiku-5-5 |
+| Neji | + Sai | kết luận duyệt/sửa/không duyệt, vấn đề, tuyên bố thiếu căn cứ (đánh giá của AI) | claude-sonnet-5-5 |
+| Minato | + Jiraiya, múi giờ | lịch đề xuất (chưa lên lịch/đăng thật) | claude-haiku-5-5 |
+| Ino | + Jiraiya, bình luận do người dùng nhập | bản nháp trả lời (chưa gửi); bỏ qua nếu không có bình luận | claude-haiku-5-5 |
+| Naruto | tất cả kết quả | báo cáo tổng hợp, rủi ro, việc cho con người | claude-sonnet-5-5 |
+
+- **Provider hỗ trợ:** chỉ Anthropic (Claude). Model hợp lệ theo tài liệu chính thức: `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-fable-5-1`. Đổi model từng nhân vật bằng biến `MODEL_<TÊN>` (xem `.env.example`), không cần sửa mã.
+- **Cấu hình trên Cloudflare:** Workers & Pages → dự án → Settings → Variables and Secrets (môi trường Production) → thêm secret `ANTHROPIC_API_KEY`, rồi deploy lại (biến mới chỉ áp cho lần deploy sau).
+- **Chạy local:** `npm run dev` (Vite) không chạy Functions nên giao diện báo "chưa có backend" và nhiệm vụ dừng ở bước đầu. Thử với AI thật: `npm run build` rồi `npx wrangler pages dev dist`, khóa đặt trong `.dev.vars`.
+- **Không có dữ liệu mẫu thay thế:** thiếu khóa, khóa sai, timeout hoặc API lỗi thì nhiệm vụ dừng tại nhân vật đó và hiện đúng nguyên nhân. Hoạt cảnh chỉ là trình diễn; nhân vật chỉ "hoàn thành" khi có kết quả thật. Tốc độ mô phỏng không làm tăng số lần gọi API.
+- **Chọn nhân vật** để xem nguồn AI, model, trạng thái và bấm **Kiểm tra kết nối** (chỉ gọi khi bạn bấm; tốn một lời gọi rất nhỏ).
+- **Chi phí và bảo vệ:** endpoint công khai nên ai mở trang cũng tiêu được khóa của bạn. Đã có: chỉ nhận cùng nguồn gốc, giới hạn 40 lượt/10 phút/IP và chặn yêu cầu trùng, nhưng các giới hạn này nằm trong bộ nhớ từng worker (chỉ là lớp phụ). Hãy đặt thêm Cloudflare Rate Limiting hoặc Access, và hạn mức chi tiêu ở Anthropic Console.
+- **Kiểm thử:** `npm test` chạy 20 kiểm thử backend bằng mock (không cần khóa, không gọi API thật).

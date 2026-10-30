@@ -6,6 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { buildWorld } from './world.js';
 import { Simulation, STATIONS, BRIDGES } from './agents.js';
+import { fetchStatus, testConnection, formatOutput } from './ai.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -73,11 +74,13 @@ function init() {
     onLog: ui.log,
     onStatus: ui.setStatus,
     onComplete: ui.showResult,
+    onCancel: () => ui.setRunning(false),
   });
   sim.camera = camera; // để nhân vật 2.5D luôn quay về phía người xem
   sim.setNight(0.2); // hòa ảnh nhân vật vào ánh đêm
   ui.bindAgents(sim.all, world);
-  if (import.meta.env.DEV) window.__shinobi = { sim, world, camera }; // chỉ để gỡ lỗi khi chạy dev
+  fetchStatus().then((st) => ui.setConfig(st));
+  if (import.meta.env.DEV) window.__shinobi = { sim, world, camera, ui }; // chỉ để gỡ lỗi khi chạy dev
   if (narrow()) $('#hud-right').open = false;
 
   // ---------- Hậu kỳ: phát sáng đèn lồng ----------
@@ -159,9 +162,12 @@ function init() {
     const topic = $('#topic').value.trim();
     if (!topic) return ui.error('Hãy nhập chủ đề nhiệm vụ trước khi giao.');
     if (topic.length < 3) return ui.error('Chủ đề quá ngắn (tối thiểu 3 ký tự).');
+    const comments = $('#comments').value.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (comments.length > 5 || comments.some((c) => c.length > 300)) return ui.error('Tối đa 5 bình luận, mỗi bình luận không quá 300 ký tự.');
     ui.error('');
-    if (sim.start(topic)) ui.setRunning(true);
+    if (sim.start(topic, comments)) ui.setRunning(true);
   });
+  $('#btn-cancel').addEventListener('click', () => sim.cancel());
   $('#btn-effects').addEventListener('click', () => setEffects(!effects));
   $('#btn-reset').addEventListener('click', resetView);
   ui.onPick(focusAgent);
@@ -219,7 +225,20 @@ function createUI() {
   let pick = () => {};
   const v = new THREE.Vector3();
 
-  const STATUS_CLASS = { working: 'working', done: 'done' };
+  const STATUS_CLASS = { working: 'working', done: 'done', error: 'error' };
+  let config = null; // /api/status; null = chưa có backend
+  let active = null;
+  let info = null;
+
+  // trạng thái AI của một nhân vật, suy ra từ cấu hình và luồng nhiệm vụ thật
+  function aiState(a) {
+    if (a.testing) return 'Đang kiểm tra kết nối';
+    if (a.state === 'working') return 'Đang xử lý';
+    if (a.state === 'error') return 'Lỗi';
+    if (a.state === 'done' || a.status === 'Nhiệm vụ hoàn thành') return 'Hoàn thành';
+    if (!a.cfg?.configured) return 'Chưa cấu hình';
+    return 'Sẵn sàng';
+  }
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
   function project(p, camera, el) {
@@ -228,6 +247,52 @@ function createUI() {
     el.style.display = visible ? '' : 'none';
     if (visible) el.style.transform = `translate(${(v.x * 0.5 + 0.5) * window.innerWidth}px, ${(-v.y * 0.5 + 0.5) * window.innerHeight}px) translate(-50%, -50%)`;
     return visible;
+  }
+
+  const mk = (tag, text, cls) => {
+    const el = document.createElement(tag);
+    if (text != null) el.textContent = text;
+    if (cls) el.className = cls;
+    return el;
+  };
+
+  // panel nguồn AI / model / trạng thái của nhân vật đang chọn; chỉ dùng textContent nên không chèn HTML
+  function renderInfo(a) {
+    const box = $('#agent-info');
+    box.replaceChildren();
+    info = null;
+    if (!a) return box.append(mk('p', 'Chọn một nhân vật để xem nguồn AI, model và trạng thái.', 'hint'));
+    const c = a.cfg;
+    box.append(mk('h3', `${a.def.name} · ${a.def.role}`));
+    const dl = mk('dl');
+    const state = mk('dd');
+    const rows = [
+      ['Nguồn AI', c?.providerLabel ?? 'Chưa có backend'],
+      ['Model', c ? c.model : '—'],
+    ];
+    for (const [k, val] of rows) dl.append(mk('dt', k), mk('dd', val));
+    dl.append(mk('dt', 'Trạng thái'), state);
+    box.append(dl);
+    if (c && !c.configured) box.append(mk('p', c.issue === 'model_not_allowed' ? 'Model cấu hình không hợp lệ.' : 'Thiếu khóa API trên máy chủ.', 'error'));
+    const btn = mk('button', 'Kiểm tra kết nối');
+    btn.type = 'button';
+    const out = mk('p', '', 'ai-test-result');
+    out.setAttribute('role', 'status');
+    btn.addEventListener('click', async () => {
+      if (a.testing) return;
+      a.testing = true;
+      btn.disabled = true;
+      out.className = 'ai-test-result';
+      out.textContent = 'Đang gọi thử…';
+      const r = await testConnection(a.def.id);
+      a.testing = false;
+      btn.disabled = false;
+      out.className = 'ai-test-result' + (r.ok ? '' : ' bad');
+      out.textContent = r.ok ? `Kết nối OK · ${r.model} · ${r.latencyMs} ms` : `Lỗi: ${r.message}`;
+    });
+    box.append(btn, out);
+    info = { state };
+    state.textContent = aiState(a);
   }
 
   return {
@@ -270,7 +335,14 @@ function createUI() {
     onPick(fn) {
       pick = fn;
     },
+    setConfig(st) {
+      config = st;
+      for (const a of agents) a.cfg = st?.characters.find((c) => c.id === a.def.id) ?? null;
+      renderInfo(active);
+    },
     setActive(agent) {
+      active = agent;
+      renderInfo(agent);
       for (const a of agents) {
         a.ui.li.classList.toggle('active', a === agent);
         a.ui.plaque.classList.toggle('active', a === agent);
@@ -285,6 +357,7 @@ function createUI() {
         a.ui.chip.textContent = a.status;
         a.ui.chip.className = 'chip ' + cls;
       }
+      if (info && active) info.state.textContent = aiState(active);
     },
     placeLabels(camera) {
       for (const a of agents) {
@@ -314,6 +387,8 @@ function createUI() {
       $('#btn-start').disabled = running;
       $('#btn-start').textContent = running ? 'Đội đang làm nhiệm vụ…' : 'Gửi phong thư nhiệm vụ';
       $('#topic').disabled = running;
+      $('#comments').disabled = running;
+      $('#btn-cancel').hidden = !running;
     },
     error(msg) {
       const el = $('#form-error');
@@ -321,12 +396,18 @@ function createUI() {
       el.hidden = !msg;
       if (msg) $('#topic').focus();
     },
-    showResult({ topic, results }) {
+    showResult({ topic, results, error }) {
+      const card = (r) => {
+        const body = r.skipped ?? formatOutput(r.agent.id, r.output);
+        const tag = r.skipped ? 'bỏ qua' : `AI · ${r.meta.model}`;
+        const note = r.meta?.note ? `<span class="note">${esc(r.meta.note)}</span>` : '';
+        return `<article style="--c:${r.agent.color}"><img src="/characters/${r.agent.id}.png" alt="" /><div><h3>${esc(r.agent.name)} · ${esc(r.agent.role)} <small>(${esc(tag)})</small></h3><p>${esc(body)}</p>${note}</div></article>`;
+      };
       $('#result-body').innerHTML =
         `<p class="topic"><b>Chủ đề:</b> ${esc(topic)}</p>` +
-        results
-          .map((r) => `<article style="--c:${r.agent.color}"><img src="/characters/${r.agent.id}.png" alt="" /><div><h3>${r.agent.name} · ${r.agent.role} <small>(${r.live ? 'AI thật' : 'mẫu mô phỏng'})</small></h3><p>${esc(r.output)}</p></div></article>`)
-          .join('');
+        (error ? `<p class="fail" role="alert"><b>Nhiệm vụ dừng tại ${esc(error.agent.name)}:</b> ${esc(error.message)}</p>` : '') +
+        results.map(card).join('');
+      $('#result h2').textContent = error ? 'Nhiệm vụ chưa hoàn thành' : 'Nhiệm vụ hoàn thành';
       $('#result').showModal();
     },
   };
