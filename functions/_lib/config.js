@@ -23,6 +23,15 @@ export const PROVIDERS = {
       'gemini-4-argon': 'Gemini 4 Argon · mạnh nhất',
     },
   },
+  cheapkey: {
+    label: 'CheapKeyAI (cổng bên thứ ba, chưa kiểm chứng)',
+    keyEnv: 'CHEAPKEY_API_KEY',
+    baseUrl: 'https://cheapkeyai.shop/v1',
+    defaultModel: 'gpt-5-mini',
+    models: {
+      'gpt-5-mini': 'gpt-5-mini qua cổng CheapKeyAI',
+    },
+  },
   openai: {
     label: 'OpenAI (ChatGPT)',
     keyEnv: 'OPENAI_API_KEY',
@@ -124,13 +133,17 @@ export function validate(schema, value, path = '$') {
 export function resolve(id, env) {
   const c = CHARACTERS[id];
   if (!c) return null;
-  const provider = PROVIDERS[c.provider];
-  const wanted = env?.[`MODEL_${id.toUpperCase()}`];
-  const model = wanted || c.model;
+  // Có thể đổi provider bằng PROVIDER_<ID> (chỉ nhận provider đã khai báo ở trên); không hợp lệ thì báo lỗi cấu hình.
+  const wantedProvider = env?.[`PROVIDER_${id.toUpperCase()}`];
+  const providerBad = Boolean(wantedProvider) && !Object.hasOwn(PROVIDERS, wantedProvider);
+  const providerId = wantedProvider && !providerBad ? wantedProvider : c.provider;
+  const provider = PROVIDERS[providerId];
+  const wantedModel = env?.[`MODEL_${id.toUpperCase()}`];
+  const model = wantedModel || (providerId === c.provider ? c.model : provider.defaultModel ?? Object.keys(provider.models)[0]);
   const modelOk = Object.hasOwn(provider.models, model);
   const hasKey = Boolean(env?.[provider.keyEnv]);
-  const issue = !modelOk ? 'model_not_allowed' : !hasKey ? 'not_configured' : null;
-  return { id, ...c, providerLabel: provider.label, keyEnv: provider.keyEnv, model, issue };
+  const issue = providerBad ? 'provider_not_allowed' : !modelOk ? 'model_not_allowed' : !hasKey ? 'not_configured' : null;
+  return { id, ...c, provider: providerId, providerLabel: provider.label, keyEnv: provider.keyEnv, baseUrl: provider.baseUrl, model, issue };
 }
 
 export const timezone = (env) => env?.TIMEZONE || 'Asia/Ho_Chi_Minh';

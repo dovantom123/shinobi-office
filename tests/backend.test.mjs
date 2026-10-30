@@ -34,7 +34,7 @@ function mockFetch(handler) {
 const ok = (obj) => new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(obj) }], usage: { input_tokens: 5, output_tokens: 7 } }));
 const okOpenAI = (obj) => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'reasoning', summary: [] }, { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(obj) }] }], usage: { input_tokens: 5, output_tokens: 7 } }));
 const okGoogle = (obj) => new Response(JSON.stringify({ status: 'completed', steps: [{ type: 'user_input', content: [] }, { type: 'model_output', content: [{ type: 'text', text: JSON.stringify(obj) }] }], usage: { total_input_tokens: 5, total_output_tokens: 7 } }));
-const byId = (id) => (body, opts, url) => (String(url).includes('openai.com') ? okOpenAI(OUT[id]) : String(url).includes('googleapis.com') ? okGoogle(OUT[id]) : ok(OUT[id]));
+const byId = (id) => (body, opts, url) => ((String(url).includes('openai.com') || String(url).includes('cheapkeyai.shop')) ? okOpenAI(OUT[id]) : String(url).includes('googleapis.com') ? okGoogle(OUT[id]) : ok(OUT[id]));
 const rawOpenAI = (o) => () => new Response(JSON.stringify(o));
 const hang = () => (u, o) => new Promise((_, rej) => o.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError'))));
 
@@ -308,4 +308,44 @@ test('OpenAI vẫn được hỗ trợ ở tầng provider (chưa nhân vật n�
     mockFetch(h);
     await assert.rejects(run(), { code });
   }
+});
+
+const CK = { ...ENV, CHEAPKEY_API_KEY: 'ck-SECRET', PROVIDER_SAI: 'cheapkey' };
+
+test('Thử Sai qua CheapKeyAI (PROVIDER_SAI=cheapkey): đúng endpoint cố định, khóa riêng, model mặc định', async () => {
+  mockFetch(byId('sai'));
+  const j = await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs: sai }), CK)).json();
+  assert.equal(j.ok, true, JSON.stringify(j));
+  assert.equal(j.meta.provider, 'cheapkey');
+  assert.equal(j.meta.model, 'gpt-5-mini');
+  const c = calls[0];
+  assert.equal(c.url, 'https://cheapkeyai.shop/v1/responses');
+  assert.equal(c.headers.authorization, 'Bearer ck-SECRET');
+  assert.ok(!JSON.stringify(c.headers).includes('gm-SECRET'));
+  assert.ok(!JSON.stringify(j).includes('SECRET'));
+});
+
+test('Mặc định Sai vẫn dùng Google; thiếu CHEAPKEY_API_KEY thì chỉ báo chưa cấu hình', async () => {
+  assert.equal(resolve('sai', ENV).provider, 'google');
+  mockFetch(byId('sai'));
+  const env = { ...ENV, PROVIDER_SAI: 'cheapkey' };
+  assert.equal((await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs: sai }), env)).json()).code, 'not_configured');
+  assert.equal(calls.length, 0);
+});
+
+test('PROVIDER_<ID> chỉ nhận provider đã khai báo; không thể trỏ tới địa chỉ tùy ý', async () => {
+  mockFetch(byId('sai'));
+  const env = { ...ENV, PROVIDER_SAI: 'https://evil.com' };
+  assert.equal((await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs: sai }), env)).json()).code, 'provider_not_allowed');
+  assert.equal(resolve('sai', { ...CK, MODEL_SAI: 'gemini-3.8-flash' }).issue, 'model_not_allowed');
+  assert.equal(calls.length, 0);
+});
+
+test('Cổng bọc JSON trong khối code vẫn được chấp nhận nhưng phải đúng schema', async () => {
+  const fenced = (t) => () => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: t }] }] }));
+  mockFetch(fenced('\`\`\`json\n' + JSON.stringify(OUT.sai) + '\n\`\`\`'));
+  assert.equal((await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs: sai }), CK)).json()).ok, true);
+  resetGuard();
+  mockFetch(fenced('\`\`\`json\n{"concept":1}\n\`\`\`'));
+  assert.equal((await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs: sai }), CK)).json()).code, 'output_invalid');
 });

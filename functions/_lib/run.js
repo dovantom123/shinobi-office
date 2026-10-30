@@ -14,6 +14,7 @@ const MSG = {
   bad_comments: 'Bình luận không hợp lệ (tối đa 5 dòng, mỗi dòng 300 ký tự).',
   not_configured: 'Chưa cấu hình khóa API trên máy chủ.',
   model_not_allowed: 'Model được cấu hình không nằm trong danh sách cho phép.',
+  provider_not_allowed: 'Nhà cung cấp được cấu hình không hợp lệ.',
   rate_limited: 'Quá nhiều lượt gọi, hãy thử lại sau ít phút.',
   duplicate: 'Yêu cầu giống hệt đang được xử lý.',
   auth: 'Khóa API bị từ chối (sai hoặc hết hiệu lực).',
@@ -89,7 +90,8 @@ export async function handleRun(request, env, { now = new Date() } = {}) {
     });
     let output;
     try {
-      output = validate(cfg.schema, JSON.parse(text));
+      // một số cổng bọc JSON trong khối ```; gỡ ra rồi vẫn kiểm tra nghiêm ngặt bằng schema
+      output = validate(cfg.schema, JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')));
     } catch {
       return failCode('output_invalid', 502);
     }

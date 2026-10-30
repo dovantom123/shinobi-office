@@ -2,16 +2,17 @@
 // Đầu ra có cấu trúc dùng text.format = json_schema (strict); JSON nằm trong output[].content[].text.
 import { AiError } from './anthropic.js';
 
-const URL_RESPONSES = 'https://api.openai.com/v1/responses';
+// baseUrl do cấu hình phía server quyết định (OpenAI chính thức hoặc cổng tương thích), không bao giờ lấy từ client.
+const OPENAI_BASE = 'https://api.openai.com/v1';
 
-export async function callOpenAI({ apiKey, model, system, user, maxTokens, schema, signal, timeoutMs = 45000 }) {
+export async function callOpenAI({ baseUrl = OPENAI_BASE, apiKey, model, system, user, maxTokens, schema, signal, timeoutMs = 45000 }) {
   const timeout = AbortSignal.timeout(timeoutMs);
   const body = { model, instructions: system, input: user, max_output_tokens: maxTokens, store: false };
   if (schema) body.text = { format: { type: 'json_schema', name: 'ket_qua', strict: true, schema } };
 
   let res;
   try {
-    res = await fetch(URL_RESPONSES, {
+    res = await fetch(`${baseUrl}/responses`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(body),
