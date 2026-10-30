@@ -1,6 +1,7 @@
 // Xử lý một lượt chạy của một nhân vật: kiểm tra đầu vào → dựng prompt → gọi AI → kiểm tra đầu ra.
 import { CHARACTERS, COMMON, resolve, validate, timezone } from './config.js';
-import { callAnthropic, AiError } from './anthropic.js';
+import { AiError } from './anthropic.js';
+import { callModel } from './provider.js';
 import { fail, json, sameOrigin, rateLimited, claim } from './guard.js';
 
 const MSG = {
@@ -82,8 +83,8 @@ export async function handleRun(request, env, { now = new Date() } = {}) {
     if (comments) lines.push('Bình luận cần trả lời:\n' + comments.map((c, i) => `${i + 1}. ${clean(c)}`).join('\n'));
     const user = `<du_lieu>\n${lines.join('\n\n')}\n</du_lieu>\n\nHãy làm phần việc của bạn và trả về đúng định dạng JSON được yêu cầu.`;
 
-    const { text, usage } = await callAnthropic({
-      apiKey: env[cfg.keyEnv], model: cfg.model, system: `${COMMON}\n\n${cfg.system}`,
+    const { text, usage } = await callModel(cfg, env, {
+      system: `${COMMON}\n\n${cfg.system}`,
       user, maxTokens: cfg.maxTokens, schema: cfg.schema, signal: request.signal,
     });
     let output;

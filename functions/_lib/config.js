@@ -13,6 +13,13 @@ export const PROVIDERS = {
       'claude-fable-5-1': 'Fable 5.1 · mạnh nhất, đắt nhất',
     },
   },
+  openai: {
+    label: 'OpenAI (ChatGPT)',
+    keyEnv: 'OPENAI_API_KEY',
+    models: {
+      'gpt-6.1-sol': 'GPT-6.1 Sol',
+    },
+  },
 };
 
 const str = { type: 'string' };
@@ -36,7 +43,7 @@ export const CHARACTERS = {
     schema: obj({ title: str, caption: str, body: str, hashtags: strs, assumptions: strs }),
   },
   sai: {
-    role: 'Thiết kế', provider: 'anthropic', model: 'claude-haiku-5-5', maxTokens: 3000, needs: ['jiraiya'],
+    role: 'Thiết kế', provider: 'openai', model: 'gpt-6.1-sol', maxTokens: 6000, needs: ['jiraiya'],
     system: 'Vai trò: Sai, thiết kế. Tạo brief thiết kế, bố cục từng định dạng, bảng màu và prompt tạo ảnh cho bài viết của Jiraiya. Bạn chỉ viết brief và prompt, KHÔNG tạo ảnh.',
     schema: obj({ concept: str, layouts: { type: 'array', items: obj({ format: str, size: str, description: str }) }, palette: strs, imagePrompts: strs }),
   },

@@ -8,7 +8,7 @@ import { CHARACTERS, ORDER, resolve } from '../functions/_lib/config.js';
 import { onRequestGet as status } from '../functions/api/status.js';
 import { onRequestPost as testConn } from '../functions/api/test.js';
 
-const ENV = { ANTHROPIC_API_KEY: 'sk-test-SECRET' };
+const ENV = { ANTHROPIC_API_KEY: 'sk-test-SECRET', OPENAI_API_KEY: 'sk-openai-SECRET' };
 const req = (body, { origin, signal } = {}) =>
   new Request('https://x.dev/api/produce', { method: 'POST', headers: { 'content-type': 'application/json', ...(origin ? { origin } : {}) }, body: JSON.stringify(body), signal });
 
@@ -27,11 +27,13 @@ function mockFetch(handler) {
   globalThis.fetch = async (url, opts) => {
     const body = JSON.parse(opts.body);
     calls.push({ url, headers: opts.headers, body });
-    return handler(body, opts);
+    return handler(body, opts, url);
   };
 }
 const ok = (obj) => new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(obj) }], usage: { input_tokens: 5, output_tokens: 7 } }));
-const byId = (id) => () => ok(OUT[id]);
+const okOpenAI = (obj) => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'reasoning', summary: [] }, { type: 'message', content: [{ type: 'output_text', text: JSON.stringify(obj) }] }], usage: { input_tokens: 5, output_tokens: 7 } }));
+const byId = (id) => (body, opts, url) => (String(url).includes('openai.com') ? okOpenAI(OUT[id]) : ok(OUT[id]));
+const rawOpenAI = (o) => () => new Response(JSON.stringify(o));
 const hang = () => (u, o) => new Promise((_, rej) => o.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError'))));
 
 beforeEach(() => { calls = []; resetGuard(); });
@@ -65,10 +67,12 @@ for (const id of ORDER.slice(1)) {
     assert.equal(j.ok, true, JSON.stringify(j));
     assert.deepEqual(j.output, OUT[id]);
     const sent = calls[0].body;
-    assert.ok(sent.system.includes(cfg.system.slice(0, 30)));
-    for (const n of cfg.needs) assert.ok(sent.messages[0].content.includes(`Kết quả của ${n}`), `thiếu đầu vào ${n}`);
-    if (cfg.needsComments) assert.ok(sent.messages[0].content.includes('1. Giá bao nhiêu?'));
-    if (cfg.usesTimezone) assert.ok(sent.messages[0].content.includes('Asia/Ho_Chi_Minh'));
+    const sys = sent.system ?? sent.instructions;
+    const usr = sent.messages?.[0].content ?? sent.input;
+    assert.ok(sys.includes(cfg.system.slice(0, 30)));
+    for (const n of cfg.needs) assert.ok(usr.includes(`Kết quả của ${n}`), `thiếu đầu vào ${n}`);
+    if (cfg.needsComments) assert.ok(usr.includes('1. Giá bao nhiêu?'));
+    if (cfg.usesTimezone) assert.ok(usr.includes('Asia/Ho_Chi_Minh'));
     // thiếu đầu vào bắt buộc → 400, không gọi AI
     calls.length = 0;
     const r = await handleRun(req({ ...body, inputs: {} }), ENV);
@@ -202,4 +206,73 @@ test('/api/test: báo kết quả và lỗi đúng', async () => {
   assert.equal((await (await post({})).json()).code, 'not_configured');
   mockFetch(() => new Response('{}', { status: 401 }));
   assert.equal((await (await post(ENV)).json()).code, 'auth');
+});
+
+test('Sai dùng OpenAI gpt-6.1-sol qua Responses API với schema strict, khóa riêng', async () => {
+  mockFetch(byId('sai'));
+  const inputs = { shikamaru: OUT.shikamaru, jiraiya: OUT.jiraiya };
+  const j = await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs }), ENV)).json();
+  assert.equal(j.ok, true);
+  assert.equal(j.meta.provider, 'openai');
+  assert.equal(j.meta.model, 'gpt-6.1-sol');
+  const c = calls[0];
+  assert.equal(c.url, 'https://api.openai.com/v1/responses');
+  assert.equal(c.headers.authorization, 'Bearer sk-openai-SECRET');
+  assert.equal(c.headers['x-api-key'], undefined);
+  assert.equal(c.body.model, 'gpt-6.1-sol');
+  assert.equal(c.body.text.format.type, 'json_schema');
+  assert.equal(c.body.text.format.strict, true);
+  assert.ok(c.body.instructions.includes('Sai'));
+  assert.ok(!JSON.stringify(j).includes('SECRET'));
+  // các nhân vật khác vẫn dùng Anthropic với khóa Anthropic
+  calls.length = 0;
+  mockFetch(byId('shikamaru'));
+  await handleRun(req({ characterId: 'shikamaru', topic: 'abc' }), ENV);
+  assert.equal(calls[0].url, 'https://api.anthropic.com/v1/messages');
+});
+
+test('Sai: thiếu OPENAI_API_KEY chỉ làm Sai chưa cấu hình, nhân vật Anthropic không ảnh hưởng', async () => {
+  const env = { ANTHROPIC_API_KEY: 'k' };
+  mockFetch(byId('sai'));
+  const inputs = { shikamaru: OUT.shikamaru, jiraiya: OUT.jiraiya };
+  assert.equal((await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs }), env)).json()).code, 'not_configured');
+  const st = await (await status({ request: new Request('https://x.dev/api/status'), env })).json();
+  const by = Object.fromEntries(st.characters.map((c) => [c.id, c]));
+  assert.equal(by.sai.configured, false);
+  assert.equal(by.sai.provider, 'openai');
+  assert.equal(by.jiraiya.configured, true);
+  assert.equal(calls.length, 0);
+});
+
+test('Sai: model ngoài danh sách OpenAI bị từ chối, model Claude không dùng được cho OpenAI', () => {
+  assert.equal(resolve('sai', { ...ENV, MODEL_SAI: 'claude-haiku-5-5' }).issue, 'model_not_allowed');
+  assert.equal(resolve('sai', ENV).issue, null);
+});
+
+test('OpenAI: khóa sai, giới hạn, quá tải, từ chối, bị cắt, sai định dạng', async () => {
+  const inputs = { shikamaru: OUT.shikamaru, jiraiya: OUT.jiraiya };
+  const expect = async (handler, code) => {
+    resetGuard();
+    mockFetch(handler);
+    const j = await (await handleRun(req({ characterId: 'sai', topic: 'abc', inputs }), ENV)).json();
+    assert.equal(j.code, code);
+    assert.ok(!JSON.stringify(j).includes('SECRET'));
+  };
+  const msg = (content, extra = {}) => rawOpenAI({ status: 'completed', output: [{ type: 'message', content }], ...extra });
+  await expect(() => new Response('{}', { status: 401 }), 'auth');
+  await expect(() => new Response('{}', { status: 429 }), 'provider_rate_limited');
+  await expect(() => new Response('{}', { status: 503 }), 'upstream');
+  await expect(() => { throw new TypeError('fetch failed'); }, 'network');
+  await expect(msg([{ type: 'refusal', refusal: 'no' }]), 'refusal');
+  await expect(msg([{ type: 'output_text', text: '{' }], { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } }), 'truncated');
+  await expect(msg([{ type: 'output_text', text: '{"concept":1}' }]), 'output_invalid');
+  await expect(rawOpenAI({ status: 'completed', output: [] }), 'empty');
+});
+
+test('/api/test với OpenAI dùng đúng endpoint', async () => {
+  mockFetch(() => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'OK' }] }] })));
+  const j = await (await testConn({ request: req({ characterId: 'sai' }), env: ENV })).json();
+  assert.equal(j.ok, true);
+  assert.equal(j.model, 'gpt-6.1-sol');
+  assert.equal(calls[0].url, 'https://api.openai.com/v1/responses');
 });
