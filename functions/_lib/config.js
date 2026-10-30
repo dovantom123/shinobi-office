@@ -13,6 +13,16 @@ export const PROVIDERS = {
       'claude-fable-5-1': 'Fable 5.1 · mạnh nhất, đắt nhất',
     },
   },
+  google: {
+    label: 'Google (Gemini)',
+    keyEnv: 'GEMINI_API_KEY',
+    models: {
+      'gemini-3.8-flash': 'Gemini 3.8 Flash · nhanh, cân bằng',
+      'gemini-3.6-flash': 'Gemini 3.6 Flash',
+      'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite · rẻ nhất',
+      'gemini-4-argon': 'Gemini 4 Argon · mạnh nhất',
+    },
+  },
   openai: {
     label: 'OpenAI (ChatGPT)',
     keyEnv: 'OPENAI_API_KEY',
@@ -43,7 +53,7 @@ export const CHARACTERS = {
     schema: obj({ title: str, caption: str, body: str, hashtags: strs, assumptions: strs }),
   },
   sai: {
-    role: 'Thiết kế', provider: 'openai', model: 'gpt-6.1-sol', maxTokens: 6000, needs: ['jiraiya'],
+    role: 'Thiết kế', provider: 'google', model: 'gemini-3.8-flash', maxTokens: 6000, needs: ['jiraiya'],
     system: 'Vai trò: Sai, thiết kế. Tạo brief thiết kế, bố cục từng định dạng, bảng màu và prompt tạo ảnh cho bài viết của Jiraiya. Bạn chỉ viết brief và prompt, KHÔNG tạo ảnh.',
     schema: obj({ concept: str, layouts: { type: 'array', items: obj({ format: str, size: str, description: str }) }, palette: strs, imagePrompts: strs }),
   },
