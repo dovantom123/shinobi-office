@@ -1,0 +1,12 @@
+{
+  "models": {},
+  "sprites": {
+    "naruto": "naruto.png",
+    "shikamaru": "shikamaru.png",
+    "jiraiya": "jiraiya.png",
+    "sai": "sai.png",
+    "neji": "neji.png",
+    "minato": "minato.png",
+    "ino": "ino.png"
+  }
+}

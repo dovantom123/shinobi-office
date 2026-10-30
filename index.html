@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Marketing · Shinobi Office</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Noto+Serif:wght@600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="labels"></div>
+
+    <div id="loading" role="status">
+      <div class="spinner"></div>
+      <p>Đang dựng Shinobi Office…</p>
+    </div>
+
+    <header id="title">
+      <h1><span class="orn" aria-hidden="true">❖</span> AI Marketing <i aria-hidden="true">•</i> Shinobi Office <span class="orn" aria-hidden="true">❖</span></h1>
+      <p>Văn phòng Marketing AI · Làng Lá <span class="sim">Mô phỏng</span></p>
+    </header>
+
+    <section id="hud-left" class="panel" aria-label="Giao nhiệm vụ">
+      <h2>Bảng nhiệm vụ</h2>
+      <p class="sim-note">Chế độ <b>mô phỏng</b>: nội dung các agent tạo ra là dữ liệu mẫu, chưa gọi AI thật.</p>
+      <form id="mission-form">
+        <label for="topic">Chủ đề nhiệm vụ</label>
+        <input id="topic" type="text" maxlength="80" placeholder="VD: Ra mắt ramen Ichiraku vị mới" autocomplete="off" />
+        <p id="form-error" class="error" role="alert" hidden></p>
+        <button id="btn-start" class="gold" type="submit">Gửi phong thư nhiệm vụ</button>
+      </form>
+      <div class="row">
+        <label for="speed">Tốc độ</label>
+        <select id="speed">
+          <option value="1">1×</option>
+          <option value="2" selected>2×</option>
+          <option value="4">4×</option>
+        </select>
+        <button id="btn-reset" type="button" title="Phím 0">Toàn cảnh</button>
+        <button id="btn-effects" type="button" aria-pressed="true" title="Phím E">✦ Hiệu ứng: bật</button>
+      </div>
+      <p class="hint">Kéo để xoay · cuộn để zoom · <kbd>1</kbd>–<kbd>7</kbd> theo dõi agent · bấm biển tên để chọn</p>
+    </section>
+
+    <details id="hud-right" class="panel" open>
+      <summary>Đội Shinobi <span id="mission-status">Đang chờ lệnh</span></summary>
+      <ul id="roster"></ul>
+    </details>
+
+    <details id="log-panel" class="panel" open>
+      <summary>Nhật ký</summary>
+      <ol id="log"><li class="empty">Chưa có nhiệm vụ nào. Nhập chủ đề và gửi phong thư để bắt đầu.</li></ol>
+    </details>
+
+    <dialog id="result">
+      <h2>Nhiệm vụ hoàn thành</h2>
+      <p class="sim-note">Kết quả mô phỏng, dùng để minh họa luồng làm việc.</p>
+      <div id="result-body"></div>
+      <form method="dialog"><button class="gold">Đóng</button></form>
+    </dialog>
+
+    <div id="webgl-error" class="panel" hidden>
+      <h2>Không khởi tạo được 3D</h2>
+      <p>Trình duyệt hoặc máy không hỗ trợ WebGL. Hãy thử Chrome/Edge bản mới và bật tăng tốc phần cứng.</p>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

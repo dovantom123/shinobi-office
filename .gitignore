@@ -1,0 +1,17 @@
+node_modules/
+dist/
+
+# Skill bên thứ ba: cài lại theo skills-lock.json
+.agents/
+.claude/skills
+
+# Cấu hình và bí mật cục bộ
+.claude/settings.local.json
+.env
+.env.*
+.mcp.json
+
+# Hệ điều hành
+Thumbs.db
+desktop.ini
+.DS_Store
