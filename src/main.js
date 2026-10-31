@@ -45,7 +45,7 @@ function init() {
   const compactUI = () => window.matchMedia('(max-width: 760px), (max-height: 520px) and (orientation: landscape)').matches;
   const HOME_TARGET = new THREE.Vector3(0, 1, 2);
   // Điện thoại dọc: tính khoảng cách để thấy đủ 7 đảo theo tỉ lệ màn hình (nửa bề ngang cảnh ~38 đơn vị gồm cả biển tên)
-  const FIT_HALF_WIDTH = 36;
+  const FIT_HALF_WIDTH = 41;
   const homeCam = () => {
     if (!narrow()) return new THREE.Vector3(0, 34, 86);
     const halfTanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;

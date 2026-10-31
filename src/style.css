@@ -344,9 +344,9 @@ summary { cursor: pointer; font-weight: 700; font-size: 16px; }
   .plaque { min-width: 0; padding: 3px 7px 3px; }
   .plaque b { font-size: 10.5px; letter-spacing: 0.06em; }
   .plaque span, .plaque small { display: none; }
-  /* trạng thái trên biển tên chỉ còn chấm màu (chữ vẫn có cho trình đọc màn hình và ở thanh đội) */
-  .plaque .chip { font-size: 0; margin-top: 1px; padding-top: 0; border-top: 0; line-height: 1; }
-  .plaque .chip::before { font-size: 9px; margin-right: 0; color: currentColor; }
+  /* trạng thái luôn hiện bằng chữ, cỡ nhỏ, kèm chấm màu theo trạng thái */
+  .plaque .chip { font-size: 9.5px; margin-top: 2px; padding-top: 2px; line-height: 1.2; white-space: nowrap; }
+  .plaque .chip::before { margin-right: 3px; color: currentColor; }
   .bubble { max-width: 150px; font-size: 11px; }
 
   /* bảng kết quả: trượt từ đáy, chiếm tối đa 90% chiều cao */
