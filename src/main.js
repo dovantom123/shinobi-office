@@ -40,9 +40,18 @@ function init() {
   scene.fog = new THREE.Fog(0x1b2c55, 90, 330);
 
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 1200);
-  const narrow = () => window.innerWidth < 760;
+  const narrow = () => window.innerWidth < 760; // điện thoại dọc: quyết định khung camera
+  // giao diện gọn cho điện thoại, kể cả xoay ngang (khớp media query trong style.css)
+  const compactUI = () => window.matchMedia('(max-width: 760px), (max-height: 520px) and (orientation: landscape)').matches;
   const HOME_TARGET = new THREE.Vector3(0, 1, 2);
-  const homeCam = () => (narrow() ? new THREE.Vector3(0, 46, 128) : new THREE.Vector3(0, 34, 86));
+  // Điện thoại dọc: tính khoảng cách để thấy đủ 7 đảo theo tỉ lệ màn hình (nửa bề ngang cảnh ~38 đơn vị gồm cả biển tên)
+  const FIT_HALF_WIDTH = 36;
+  const homeCam = () => {
+    if (!narrow()) return new THREE.Vector3(0, 34, 86);
+    const halfTanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
+    const d = THREE.MathUtils.clamp(FIT_HALF_WIDTH / halfTanH, 120, 240);
+    return new THREE.Vector3(0, d * 0.34, d * 0.94);
+  };
   camera.position.copy(homeCam());
 
   // camera nhìn chéo phía trước, chỉ xoay ±45° để nhân vật ảnh luôn đẹp
@@ -54,7 +63,7 @@ function init() {
   controls.minPolarAngle = 0.55;
   controls.maxPolarAngle = 1.4;
   controls.minDistance = 10;
-  controls.maxDistance = 150;
+  controls.maxDistance = narrow() ? 260 : 150;
   controls.enablePan = true;
 
   // ánh trăng xanh lạnh + ánh nền tối; ánh ấm do đèn lồng trên từng đảo
@@ -81,7 +90,7 @@ function init() {
   ui.bindAgents(sim.all, world);
   fetchStatus().then((st) => ui.setConfig(st));
   if (import.meta.env.DEV) window.__shinobi = { sim, world, camera, ui }; // chỉ để gỡ lỗi khi chạy dev
-  if (narrow()) $('#hud-right').open = false;
+  if (compactUI()) $('#hud-right').open = false;
 
   // ---------- Hậu kỳ: phát sáng đèn lồng ----------
   const composer = new EffectComposer(renderer);
@@ -169,8 +178,24 @@ function init() {
   });
   $('#btn-cancel').addEventListener('click', () => sim.cancel());
   $('#btn-effects').addEventListener('click', () => setEffects(!effects));
+  // Điện thoại: tùy chọn (bình luận, tốc độ, hiệu ứng) thu gọn sau nút ⚙
+  const setOpts = (open) => {
+    $('#hud-left').classList.toggle('opts-open', open);
+    $('#btn-opts').setAttribute('aria-expanded', String(open));
+  };
+  $('#btn-opts').addEventListener('click', () => {
+    const open = !$('#hud-left').classList.contains('opts-open');
+    setOpts(open);
+    if (open && compactUI()) $('#hud-right').open = false; // hai bảng không chồng lên nhau trên điện thoại
+  });
+  $('#hud-right').addEventListener('toggle', () => {
+    if ($('#hud-right').open && compactUI()) setOpts(false);
+  });
   $('#btn-reset').addEventListener('click', resetView);
-  ui.onPick(focusAgent);
+  ui.onPick((agent) => {
+    focusAgent(agent);
+    if (compactUI()) $('#hud-right').open = false; // thu thanh đội để thấy nhân vật vừa chọn; mở lại sẽ thấy thông tin nguồn AI
+  });
   $('#result').addEventListener('close', () => {
     ui.closeResult();
     ui.setRunning(false);
@@ -184,8 +209,13 @@ function init() {
     else if (e.key.toLowerCase() === 'e') setEffects(!effects);
   });
 
+  let lastAspect = window.innerWidth / window.innerHeight;
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
+    controls.maxDistance = narrow() ? 260 : 150;
+    // chỉ căn lại toàn cảnh khi đổi hướng màn hình; thanh địa chỉ co giãn không được reset camera của người dùng
+    if (!focus && Math.abs(camera.aspect - lastAspect) > 0.2) flyHome = true;
+    lastAspect = camera.aspect;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);

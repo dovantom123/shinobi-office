@@ -20,6 +20,7 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   background: var(--night);
   color: var(--text);
   font-family: var(--sans);
@@ -106,6 +107,7 @@ h2, summary {
 }
 #topic::placeholder { color: #8d8676; }
 :is(#topic, button, select, summary, .plaque):focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+#btn-opts { display: none; }
 .error { color: var(--danger); margin: 6px 0 0; font-size: 12px; }
 
 button, select {
@@ -293,20 +295,77 @@ summary { cursor: pointer; font-weight: 700; font-size: 16px; }
 
 #webgl-error { top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 360px; z-index: 60; }
 
-/* ---------- Màn hình nhỏ ---------- */
-@media (max-width: 760px) {
-  #title { top: 6px; width: calc(100vw - 16px); }
-  #title h1 { font-size: 15px; letter-spacing: 0.03em; }
+/* ---------- Điện thoại (dọc, hoặc xoay ngang thấp) ---------- */
+@media (max-width: 760px), (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: max(8px, env(safe-area-inset-left, 0px));
+    --safe-r: max(8px, env(safe-area-inset-right, 0px));
+  }
+  html, body { font-size: 15px; }
+  /* mục tiêu chạm tối thiểu 44px, chữ ô nhập 16px để trình duyệt không tự phóng to khi gõ */
+  button, select, summary { min-height: 44px; }
+  #topic, #comments, select { font-size: 16px; }
+
+  #title { top: calc(var(--safe-t) + 6px); width: calc(100vw - 16px); }
+  #title h1 { font-size: 14px; letter-spacing: 0.03em; }
   #title .orn { display: none; }
   #title p { font-size: 10px; }
-  #hud-left { top: 64px; left: 8px; right: 8px; width: auto; padding: 10px; }
+
+  /* bảng nhiệm vụ gọn: ô chủ đề + nút gửi; phần còn lại sau nút ⚙ */
+  #hud-left { top: calc(var(--safe-t) + 54px); left: var(--safe-l); right: var(--safe-r); width: auto; padding: 8px; max-height: calc(100dvh - var(--safe-t) - 140px); overflow: auto; }
   #hud-left h2, .hint, .sim-note { display: none; }
-  #hud-right { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; max-height: 42vh; }
+  #mission-form { display: grid; grid-template-columns: 1fr 44px; gap: 8px; align-items: center; }
+  #mission-form > label[for='topic'] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #topic { min-height: 44px; }
+  #btn-opts { display: grid; place-items: center; width: 44px; padding: 0; font-size: 20px; line-height: 1; }
+  #hud-left.opts-open #btn-opts { background: rgba(217, 180, 90, 0.22); border-color: var(--gold-hi); }
+  #btn-start, #btn-cancel, #form-error, #extra { grid-column: 1 / -1; }
+  button.gold { margin-top: 0; min-height: 48px; }
+  #btn-cancel { margin-top: 0; }
+  .error { margin: 0; }
+  #extra { margin: 0; }
+  #extra summary { display: list-item; list-style-position: inside; line-height: 40px; font-size: 14px; }
+  #comments { font-size: 16px; }
+  #hud-left:not(.opts-open) #extra { display: none; }
+  .row { display: contents; }
+  #hud-left.opts-open .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+  #hud-left:not(.opts-open) .row > :not(#btn-reset) { display: none; }
+  /* "Toàn cảnh" luôn với tới được: nút nổi phía trên thanh đội */
+  #btn-reset { position: fixed; z-index: 9; right: var(--safe-r); bottom: calc(var(--safe-b) + 76px); padding: 0 14px; background: rgba(10, 16, 36, 0.92); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+
+  /* thanh đội ở đáy, mở ra tối đa ~58% chiều cao */
+  #hud-right { top: auto; bottom: calc(var(--safe-b) + 8px); left: var(--safe-l); right: var(--safe-r); width: auto; max-height: min(58dvh, calc(100dvh - 200px)); padding: 6px 10px; overscroll-behavior: contain; }
+  #hud-right > summary { display: list-item; list-style-position: inside; line-height: 40px; margin: 0; }
+  #mission-status { margin: 0; line-height: 40px; }
+  #roster li button { min-height: 52px; }
   #log-panel { display: none; }
-  .plaque { min-width: 0; padding: 3px 8px 4px; }
-  .plaque b { font-size: 11px; }
+  .plaque { min-width: 0; padding: 3px 7px 3px; }
+  .plaque b { font-size: 10.5px; letter-spacing: 0.06em; }
   .plaque span, .plaque small { display: none; }
+  /* trạng thái trên biển tên chỉ còn chấm màu (chữ vẫn có cho trình đọc màn hình và ở thanh đội) */
+  .plaque .chip { font-size: 0; margin-top: 1px; padding-top: 0; border-top: 0; line-height: 1; }
+  .plaque .chip::before { font-size: 9px; margin-right: 0; color: currentColor; }
   .bubble { max-width: 150px; font-size: 11px; }
+
+  /* bảng kết quả: trượt từ đáy, chiếm tối đa 90% chiều cao */
+  #result { width: 100%; max-width: 100%; margin: auto 0 0; max-height: 90dvh; border-radius: 14px 14px 0 0; padding: 14px 14px calc(14px + var(--safe-b)); overscroll-behavior: contain; }
+  #result h2 { font-size: 17px; }
+  #result-body article { grid-template-columns: 36px 1fr; gap: 8px; }
+  #result-body article > img { width: 36px; height: 36px; }
+  /* nút Đóng dính ở đáy bảng để luôn với tới được khi nội dung dài */
+  #result form { position: sticky; bottom: calc(-14px - var(--safe-b)); margin: 0 -14px; padding: 12px 14px calc(14px + var(--safe-b)); background: linear-gradient(180deg, rgba(11, 14, 28, 0), #0b0e1c 28%); }
+  #result form button.gold { min-height: 48px; margin-top: 0; }
+  #result-body .img-tools button { width: 100%; }
+}
+
+/* điện thoại nằm ngang: ưu tiên cảnh 3D, bảng nằm hai bên và cuộn được */
+@media (max-height: 520px) and (orientation: landscape) {
+  #title { display: none; }
+  #hud-left { top: 8px; width: min(320px, 44vw); right: auto; max-height: calc(100dvh - 16px); }
+  #hud-right { left: auto; right: var(--safe-r); bottom: 8px; width: min(300px, 40vw); max-height: calc(100dvh - 16px); }
+  #btn-reset { bottom: calc(var(--safe-b) + 8px); right: calc(min(300px, 40vw) + var(--safe-r) + 12px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

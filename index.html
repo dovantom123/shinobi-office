@@ -2,7 +2,7 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>AI Marketing · Shinobi Office</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,7 +28,8 @@
       <p class="sim-note">Mỗi nhân vật gọi <b>AI thật</b> qua backend. Thiếu khóa hoặc API lỗi thì nhiệm vụ dừng và báo rõ lỗi, không có dữ liệu mẫu thay thế. Hoạt cảnh chỉ để trình diễn.</p>
       <form id="mission-form">
         <label for="topic">Chủ đề nhiệm vụ</label>
-        <input id="topic" type="text" maxlength="80" placeholder="VD: Ra mắt ramen Ichiraku vị mới" autocomplete="off" />
+        <input id="topic" type="text" maxlength="80" placeholder="VD: Ra mắt ramen Ichiraku vị mới" autocomplete="off" enterkeyhint="send" />
+        <button id="btn-opts" type="button" aria-expanded="false" aria-label="Tùy chọn nhiệm vụ" title="Tùy chọn: bình luận, tốc độ, hiệu ứng">⚙</button>
         <details id="extra">
           <summary>Bình luận cho Ino (tùy chọn)</summary>
           <label for="comments">Mỗi dòng một bình luận, tối đa 5. Không có thì Ino bỏ qua bước này.</label>
